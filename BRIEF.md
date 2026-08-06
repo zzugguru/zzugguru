@@ -8,67 +8,57 @@
 
 ### Task
 
-Chapter 1 기반 웹 리듬 호러 게임 프로토타입 구현
+`Feat-test` 브랜치 GitHub Pages 자동 배포 허용
 
 ### Goal
 
-`Story/Chapter01.md`의 핵심 장면을 바탕으로, PC 브라우저에서 처음부터 끝까지 플레이할 수 있고 GitHub Pages에 배포 가능한 리듬게임 프로토타입을 만든다.
+게임 프로토타입을 `main`에 병합하기 전에 현재 `Feat-test` 브랜치에 push하는 것만으로 기존 GitHub Pages 주소에서 플레이할 수 있게 한다.
 
 ### Included Scope
 
-- 4키 키보드 리듬게임
-- 한 곡 또는 하나의 연속된 플레이 세션
-- 입력 판정, 콤보, 점수, 체력
-- 시작, 플레이, 결과, 재시작
-- CCTV와 새벽 3시 33분을 활용한 공포 연출
-- 임시 그래픽과 Web Audio 기반 임시 사운드 허용
-- 반응형 Canvas 화면
-- 핵심 게임 로직 테스트
-- 기존 GitHub Pages 배포 설정과 호환
+- `Feat-test` 브랜치 push를 Pages 배포 트리거에 추가
+- 기존 검증과 빌드가 성공한 경우에만 배포
+- 기존 `main` push 배포 유지
+- 현재 Vite `/zzugguru/` base 경로 유지
 
 ### Excluded Scope
 
-- 모바일 최적화
-- 서버, 계정, 온라인 랭킹
-- 다중 난이도와 다중 엔딩
-- Chapter 2 이후 콘텐츠
-- 최종 품질의 외부 음악 및 일러스트
-- 범용 채보 에디터
+- 브랜치별 별도 Preview URL
+- 동시에 여러 Pages 버전 호스팅
+- GitHub 저장소 웹 설정 직접 변경
+- 커밋, push 또는 Pull Request 생성
 
 ### Done When
 
-- [ ] PC Chrome에서 키보드로 시작부터 결과 화면까지 플레이할 수 있다.
-- [ ] 오디오 시간축에 맞춰 노트가 등장하고 판정된다.
-- [ ] Chapter 1의 주요 장면과 결말이 플레이 중 전달된다.
-- [ ] 에셋과 주요 밸런스 값을 후속 작업에서 교체하기 쉽다.
-- [ ] 새로고침 및 재시작이 정상 동작한다.
-- [ ] GitHub Pages의 `/zzugguru/` 경로에서 에셋이 정상 로드된다.
+- [ ] `Feat-test` push에서 검증 성공 후 Pages 배포가 실행된다.
+- [ ] `main` push 배포도 계속 실행된다.
+- [ ] 그 외 브랜치 push와 Pull Request에서는 Pages 배포가 실행되지 않는다.
+- [ ] 기존 타입 검사, 테스트, 디자인 검사와 빌드가 배포 전에 유지된다.
 - [ ] `npm run typecheck`, `npm run test`, `npm run build`, `git diff --check`를 통과한다.
 
 ## Developer Decisions
 
-- 빠듯한 6일 해커톤을 전제로 기능 담당이 구동 가능한 프로토타입을 먼저 제공하고, 후속 담당자가 에셋과 표현 로직을 고도화한다.
+- `Feat-test`는 별도 Preview가 아니라 기존 GitHub Pages 사이트를 덮어써 배포한다.
+- 이후 `main` push가 발생하면 동일한 사이트가 `main` 빌드로 다시 교체될 수 있다.
 - 현재 저장소의 2인 하네스 절차에 따라 구현과 독립 검토를 진행한다.
-- 초기 시각 방향은 어두운 2D CCTV 화면, 실루엣, 노이즈 효과로 한다.
 
 ## Agent Understanding
 
-- 목표: 외부 에셋 없이도 GitHub Pages에서 바로 로드되어, 키보드로 시작부터 결말까지 완주할 수 있는 Chapter 1 기반 리듬 호러 수직 슬라이스를 제공한다.
-- 포함 범위: 4레인 입력, Web Audio 시간축, 데이터 기반 채보와 서사 큐, 판정·콤보·점수·체력, 시작·플레이·결과·재시작, CCTV 공포 연출, 반응형 Canvas와 핵심 순수 로직 테스트.
-- 제외 범위: 모바일, 백엔드, 영속 저장, 온라인 랭킹, 복수 난이도·엔딩, 외부 저작권 에셋, 범용 에디터와 후속 챕터.
-- 경계: 게임 규칙·채보·서사 큐는 기능 폴더의 데이터와 순수 로직으로 분리하고 Canvas 렌더러와 Web Audio가 이를 소비한다. 오디오 생성이 불가능한 경우에도 시각 시간축으로 플레이를 계속한다.
-- 완료 기준: PC 키보드 `D F J K`로 한 세션을 완주하고 결과 및 재시작까지 도달하며, 주요 서사 장면이 시간 큐로 전달되고 `/zzugguru/` 배포 경로에서 번들이 동작한다.
-- 검증: `npm run typecheck`, `npm run test`, `npm run design:lint`, `npm run build`, `git diff --check`.
+- 목표: 현재 체크아웃된 `Feat-test` 브랜치를 원격에 push하면 기존 Pages 워크플로가 동일한 품질 검사를 거쳐 게임 빌드를 기존 사이트에 배포한다.
+- 포함 범위: `.github/workflows/deploy-pages.yml`의 push 브랜치 필터에 정확히 `Feat-test`를 추가하고, `main`과 기존 검증·배포 단계 및 `/zzugguru/` 경로는 유지한다.
+- 제외 범위: 별도 Preview 주소나 동시 버전 호스팅, 다른 브랜치 배포, 저장소 설정 변경, 커밋과 원격 push.
+- 배포 경계: `main` 또는 `Feat-test` push만 Pages 배포를 시작한다. PR 이벤트와 다른 브랜치 push는 배포하지 않으며, 공유 `github-pages` 환경이므로 가장 최근 성공 배포가 사이트 내용을 결정한다.
+- 완료 기준: 워크플로 트리거와 기존 단계가 요구사항에 맞고 프로젝트 전체 검사와 diff 검사가 통과한다.
+- 검증: `npm.cmd run typecheck`, `npm.cmd run test`, `npm.cmd run design:lint`, `npm.cmd run build`, 워크플로 텍스트 확인, `git diff --check`.
 
 ## Agent Questions
 
-없음. 해커톤용 프로토타입이므로 외부 에셋 없이 약 2분 길이의 단일 난이도 수직 슬라이스로 구현한다.
+없음.
 
 ## Agent Result
 
-- `D F J K` 4레인 입력으로 약 2분 동안 플레이하는 Chapter 1 리듬 호러 수직 슬라이스를 구현했다. 시작, 판정, 콤보·점수·체력, 일시정지, 성공·실패 결과와 재시작을 지원한다.
-- 외부 에셋 없이 Canvas CCTV 화면, 접근하는 실루엣, 노이즈, Chapter 1 서사 큐와 Web Audio 합성음을 사용한다. 오디오 생성 실패 시에도 시각 시간축으로 플레이가 진행된다.
-- 채보·서사 데이터, 순수 판정 로직, 오디오 시계와 Canvas 표현을 기능 폴더 안에서 분리해 후속 에셋·밸런스·연출 교체가 가능하다. Vite의 `/zzugguru/` base 설정을 유지해 GitHub Pages 빌드와 호환된다.
-- `npm.cmd run typecheck`, `npm.cmd run test`(9개), `npm.cmd run design:lint`, `npm.cmd run build`, `git diff --check`를 통과했다. 디자인 검사는 오류 없이 기존 미사용 토큰 경고 3건만 보고한다.
-- 독립 리뷰어가 전반 채보와 박자음 간격 불일치 및 일시정지 후 위상 문제, 새 디자인 토큰의 대비 문제를 발견했다. 절대 채보 시간축 스케줄링과 경계 테스트를 추가하고 대비 조합을 수정했으며, 같은 리뷰어의 재검증을 통과했다.
-- 잔여 위험: 실제 Chrome에서 전체 2분 플레이와 오디오 지연을 수동 확인하지 않았다. 브라우저 메인 스레드 부하에 따른 합성음 타이머 지터가 있을 수 있으며, 최종 음악·그래픽 에셋은 후속 고도화 범위다.
+- `.github/workflows/deploy-pages.yml`의 push 필터에 정확한 대소문자 `Feat-test`를 추가했다. 이제 `Feat-test` 또는 `main` push에서만 동일한 검증 후 기존 GitHub Pages 사이트를 배포한다.
+- 기존 `npm ci`, 타입 검사, 테스트, 디자인 검사, 빌드, Pages artifact 업로드와 배포 단계 및 `/zzugguru/` base 경로는 변경하지 않았다. PR과 다른 브랜치 push는 Pages를 배포하지 않는다.
+- `npm.cmd run typecheck`, `npm.cmd run test`(9개), `npm.cmd run design:lint`, `npm.cmd run build`, `git diff --check`를 통과했다. 디자인 검사는 오류 없이 기존 미사용 토큰 경고 3건만 보고했다.
+- 독립 리뷰어가 브랜치 대소문자, 이벤트 범위, 검증 선행 조건, Pages 권한·동시성, Vite base와 PR 워크플로 충돌 여부를 확인했으며 수정이 필요한 문제는 없었다.
+- 잔여 위험: GitHub 저장소의 `github-pages` Environment 보호 규칙이 `Feat-test` 배포를 허용하는지는 로컬에서 확인할 수 없다. 실제 push 후 Actions 실행과 Pages URL을 확인해야 한다.
