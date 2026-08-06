@@ -1,0 +1,30 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, Pretendard, system-ui, sans-serif;
+  background: #030712;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+#app {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+canvas {
+  width: min(100%, 960px);
+  height: auto;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
