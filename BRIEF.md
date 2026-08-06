@@ -8,51 +8,67 @@
 
 ### Task
 
-GitHub Pages 자동 배포 구성
+Chapter 1 기반 웹 리듬 호러 게임 프로토타입 구현
 
 ### Goal
 
-기능 브랜치에서는 로컬과 Pull Request CI로 검증하고, main에 병합되는 순간 GitHub Pages에 자동 배포한다.
+`Story/Chapter01.md`의 핵심 장면을 바탕으로, PC 브라우저에서 처음부터 끝까지 플레이할 수 있고 GitHub Pages에 배포 가능한 리듬게임 프로토타입을 만든다.
 
 ### Included Scope
 
-- Vite GitHub Pages 경로 설정
-- Pull Request 타입 검사, 테스트, 디자인 검사 및 빌드
-- main 병합 시 동일한 검사 후 GitHub Pages 자동 배포
-- README와 개발·배포 가이드 수정
+- 4키 키보드 리듬게임
+- 한 곡 또는 하나의 연속된 플레이 세션
+- 입력 판정, 콤보, 점수, 체력
+- 시작, 플레이, 결과, 재시작
+- CCTV와 새벽 3시 33분을 활용한 공포 연출
+- 임시 그래픽과 Web Audio 기반 임시 사운드 허용
+- 반응형 Canvas 화면
+- 핵심 게임 로직 테스트
+- 기존 GitHub Pages 배포 설정과 호환
 
 ### Excluded Scope
 
-- 기능 브랜치별 Preview 사이트
-- 별도 백엔드 배포
-- 커스텀 도메인
+- 모바일 최적화
+- 서버, 계정, 온라인 랭킹
+- 다중 난이도와 다중 엔딩
+- Chapter 2 이후 콘텐츠
+- 최종 품질의 외부 음악 및 일러스트
+- 범용 채보 에디터
 
 ### Done When
 
-- [ ] 로컬에서 개발 서버와 배포 빌드를 확인할 수 있다.
-- [ ] Pull Request에서는 검증만 실행되고 배포되지 않는다.
-- [ ] main에 병합하면 검증 성공 후 자동 배포된다.
-- [ ] 관련 문서가 실제 설정과 일치한다.
+- [ ] PC Chrome에서 키보드로 시작부터 결과 화면까지 플레이할 수 있다.
+- [ ] 오디오 시간축에 맞춰 노트가 등장하고 판정된다.
+- [ ] Chapter 1의 주요 장면과 결말이 플레이 중 전달된다.
+- [ ] 에셋과 주요 밸런스 값을 후속 작업에서 교체하기 쉽다.
+- [ ] 새로고침 및 재시작이 정상 동작한다.
+- [ ] GitHub Pages의 `/zzugguru/` 경로에서 에셋이 정상 로드된다.
+- [ ] `npm run typecheck`, `npm run test`, `npm run build`, `git diff --check`를 통과한다.
+
+## Developer Decisions
+
+- 빠듯한 6일 해커톤을 전제로 기능 담당이 구동 가능한 프로토타입을 먼저 제공하고, 후속 담당자가 에셋과 표현 로직을 고도화한다.
+- 현재 저장소의 2인 하네스 절차에 따라 구현과 독립 검토를 진행한다.
+- 초기 시각 방향은 어두운 2D CCTV 화면, 실루엣, 노이즈 효과로 한다.
 
 ## Agent Understanding
 
-- 목표: 기능 브랜치에서는 로컬 개발과 Pull Request CI로 품질을 확인하고, `main` 병합으로 발생한 push에서만 GitHub Pages 운영 사이트를 자동 배포한다.
-- 구현 범위: Vite 프로젝트 사이트 기준 경로 `/zzugguru/`, PR 전용 검증 워크플로, `main` 전용 검증·Pages 배포 워크플로, README와 개발·배포 가이드의 실제 설정 동기화.
-- 배포 경계: 기능 브랜치 push와 Pull Request에서는 배포하지 않는다. `main` push에서도 타입 검사, 테스트, 디자인 검사와 빌드가 모두 성공한 경우에만 배포한다.
-- 제외 범위: 브랜치별 Preview URL, 백엔드, 커스텀 도메인, GitHub 저장소 웹 설정의 직접 변경.
-- 검증: `npm run typecheck`, `npm run test`, `npm run design:lint`, `npm run build`, 로컬 preview 응답 확인, 워크플로 구문과 `git diff --check` 확인.
+- 목표: 외부 에셋 없이도 GitHub Pages에서 바로 로드되어, 키보드로 시작부터 결말까지 완주할 수 있는 Chapter 1 기반 리듬 호러 수직 슬라이스를 제공한다.
+- 포함 범위: 4레인 입력, Web Audio 시간축, 데이터 기반 채보와 서사 큐, 판정·콤보·점수·체력, 시작·플레이·결과·재시작, CCTV 공포 연출, 반응형 Canvas와 핵심 순수 로직 테스트.
+- 제외 범위: 모바일, 백엔드, 영속 저장, 온라인 랭킹, 복수 난이도·엔딩, 외부 저작권 에셋, 범용 에디터와 후속 챕터.
+- 경계: 게임 규칙·채보·서사 큐는 기능 폴더의 데이터와 순수 로직으로 분리하고 Canvas 렌더러와 Web Audio가 이를 소비한다. 오디오 생성이 불가능한 경우에도 시각 시간축으로 플레이를 계속한다.
+- 완료 기준: PC 키보드 `D F J K`로 한 세션을 완주하고 결과 및 재시작까지 도달하며, 주요 서사 장면이 시간 큐로 전달되고 `/zzugguru/` 배포 경로에서 번들이 동작한다.
+- 검증: `npm run typecheck`, `npm run test`, `npm run design:lint`, `npm run build`, `git diff --check`.
 
 ## Agent Questions
 
-없음
+없음. 해커톤용 프로토타입이므로 외부 에셋 없이 약 2분 길이의 단일 난이도 수직 슬라이스로 구현한다.
 
 ## Agent Result
 
-- `vite.config.ts`에 GitHub 프로젝트 사이트 경로 `/zzugguru/`를 적용했다.
-- `pull-request-checks.yml`은 `main` 대상 Pull Request에서 타입 검사, 테스트, 디자인 검사와 빌드만 수행하며 배포 권한과 단계가 없다.
-- `deploy-pages.yml`은 `main` push에서 동일 검증과 빌드가 성공한 경우에만 Pages artifact를 배포한다. 임의 브랜치를 배포할 수 있는 수동 실행 트리거는 두지 않았다.
-- README, 개발 프로세스 가이드와 Pages 배포 가이드를 실제 설정에 맞췄다. `main` 직접 push를 막고 PR 및 `Pull Request Checks / Verify`를 요구하는 Ruleset 설정과 PR 기반 롤백 절차도 명시했다.
-- `npm run typecheck`, `npm run test`, `npm run design:lint`, `npm run build`, YAML 파싱과 `git diff --check`를 통과했다. 디자인 검사는 오류 없이 기존 미사용 토큰 경고 3건만 보고했다.
-- 로컬 preview가 `http://127.0.0.1:4173/zzugguru/`에서 응답하고 빌드 asset URL이 `/zzugguru/assets/...`를 사용하는 것을 확인했다.
-- 독립 검증자가 수동 실행의 임의 브랜치 배포 위험과 보호된 `main`에 맞지 않는 직접 push 롤백 예시를 발견했다. 수동 트리거를 제거하고 Ruleset 및 PR 롤백으로 수정했으며, 같은 검증자의 최종 재검증을 통과했다.
-- GitHub 웹에서 Pages Source, `main` Ruleset과 필수 검사 활성화 및 최초 실제 배포는 개발자가 확인해야 한다.
+- `D F J K` 4레인 입력으로 약 2분 동안 플레이하는 Chapter 1 리듬 호러 수직 슬라이스를 구현했다. 시작, 판정, 콤보·점수·체력, 일시정지, 성공·실패 결과와 재시작을 지원한다.
+- 외부 에셋 없이 Canvas CCTV 화면, 접근하는 실루엣, 노이즈, Chapter 1 서사 큐와 Web Audio 합성음을 사용한다. 오디오 생성 실패 시에도 시각 시간축으로 플레이가 진행된다.
+- 채보·서사 데이터, 순수 판정 로직, 오디오 시계와 Canvas 표현을 기능 폴더 안에서 분리해 후속 에셋·밸런스·연출 교체가 가능하다. Vite의 `/zzugguru/` base 설정을 유지해 GitHub Pages 빌드와 호환된다.
+- `npm.cmd run typecheck`, `npm.cmd run test`(9개), `npm.cmd run design:lint`, `npm.cmd run build`, `git diff --check`를 통과했다. 디자인 검사는 오류 없이 기존 미사용 토큰 경고 3건만 보고한다.
+- 독립 리뷰어가 전반 채보와 박자음 간격 불일치 및 일시정지 후 위상 문제, 새 디자인 토큰의 대비 문제를 발견했다. 절대 채보 시간축 스케줄링과 경계 테스트를 추가하고 대비 조합을 수정했으며, 같은 리뷰어의 재검증을 통과했다.
+- 잔여 위험: 실제 Chrome에서 전체 2분 플레이와 오디오 지연을 수동 확인하지 않았다. 브라우저 메인 스레드 부하에 따른 합성음 타이머 지터가 있을 수 있으며, 최종 음악·그래픽 에셋은 후속 고도화 범위다.

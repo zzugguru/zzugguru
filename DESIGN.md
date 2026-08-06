@@ -4,6 +4,8 @@ name: "ZZUGGURU"
 description: "A provisional dark, focused visual system for the ZZUGGURU web game."
 colors:
   primary: "#312E81"
+  feedback: "#818CF8"
+  danger: "#FB7185"
   background: "#030712"
   surface: "#111827"
   surface-accent: "#312E81"
@@ -51,6 +53,15 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text-muted}"
     typography: "{typography.body}"
+  rhythm-lane:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.feedback}"
+  rhythm-danger:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.danger}"
+  health-meter:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
 ---
 
 # ZZUGGURU Design System
@@ -68,6 +79,7 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 - `text`는 제목과 중요한 정보, `text-muted`는 보조 설명에 사용한다.
 - `border`는 캔버스와 패널의 경계를 과도하게 강조하지 않는 용도로 사용한다.
 - `primary`는 현재 인디고 계열의 핵심 색상이다. 새로운 강조색이나 상태색은 실제 의미와 사용처가 정해진 뒤 추가한다.
+- `feedback`은 노트와 체력처럼 즉시 확인해야 하는 플레이 피드백에, `danger`는 낮은 체력과 실패 판정에 사용한다.
 
 텍스트와 배경의 조합은 WCAG AA 대비 기준을 만족해야 한다. 색만으로 성공, 실패, 선택 상태를 전달하지 않는다.
 
@@ -103,6 +115,7 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 - `game-canvas`는 게임 렌더링 영역의 크기, 표면 색상, 경계 형태를 정의한다.
 - `welcome-title`은 가장 높은 시각적 위계를 가진 시작 화면 제목이다.
 - `welcome-message`는 플레이어에게 다음 행동을 안내하는 보조 문구다.
+- `rhythm-lane`은 네 입력 레인과 눌림 상태를, `rhythm-danger`는 실패 판정을, `health-meter`는 현재 실패 위험을 표시한다.
 
 버튼, HUD, 패널 등 아직 구현되지 않은 컴포넌트는 미리 추측해 정의하지 않는다. 처음 추가할 때 상태와 접근성 요구사항을 함께 정의한다.
 
