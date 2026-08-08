@@ -9,3 +9,7 @@ coverage/
 # Local Codex workflow files
 /BRIEF.md
 /.agents/
+
+# Generated token usage records and active-stage state
+/Token_usage/output/
+/output/

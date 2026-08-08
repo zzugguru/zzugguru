@@ -1,5 +1,25 @@
 # ZZUGGURU Web Game
 
+## 명령 실행 시간 측정
+
+새 토큰 사용량 패키지의 `run` 명령으로 typecheck, test, build 실행 시간을 자동 기록합니다.
+
+```powershell
+npm run measure:typecheck
+npm run measure:test
+npm run measure:build
+```
+
+기록은 `output/token-usage.jsonl`에 저장되며 다음 명령으로 확인합니다.
+
+```powershell
+npm run token-usage-summary
+npm run token-usage-summary:json
+npm run token-usage-status
+```
+
+측정 대상 명령이 실패해도 걸린 시간은 기록되고 동일한 실패 종료 코드가 반환됩니다. 이 기능은 로컬 명령의 실행 시간을 자동 측정하며, Codex 계정의 남은 사용량이나 실제 토큰 수를 자동으로 읽지는 않습니다. 토큰 옵션을 직접 제공하지 않은 기록의 토큰 값은 `null`입니다.
+
 3명이 함께 웹 게임을 만들기 위한 기본 프로젝트입니다. 처음에는 구조를 단순하게 유지하고, 게임이 커질 때 폴더를 추가하는 방식을 권장합니다.
 
 ## 2에이전트 하네스
