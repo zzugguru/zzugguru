@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canActivateDevice, canInteract, clearDirections, createFlow, MAP_BOUNDS, movePlayer, PLAYER_SIZE, transitionFlow } from './mapLogic';
+import { MEMORY_ROOM_MAP, SPACESHIP_MAP } from './mapAssetManifest';
 
 describe('Chapter03 research lab map', () => {
   it('moves freely through open floor', () => {
@@ -16,6 +17,17 @@ describe('Chapter03 research lab map', () => {
   it('allows interaction only beside the reconstruction device', () => {
     expect(canInteract({ x: 650, y: 235 })).toBe(true);
     expect(canInteract({ x: 80, y: 250 })).toBe(false);
+  });
+
+  it('uses the device rectangle edge and disables the device in the memory room', () => {
+    expect(canInteract({ x: 646, y: 330 }, SPACESHIP_MAP)).toBe(true);
+    expect(canInteract({ x: 560, y: 330 }, SPACESHIP_MAP)).toBe(false);
+    expect(canInteract(MEMORY_ROOM_MAP.spawn, MEMORY_ROOM_MAP)).toBe(false);
+  });
+
+  it('uses room-specific furniture collisions after reconstruction', () => {
+    expect(movePlayer(MEMORY_ROOM_MAP.spawn, 8, 0, MEMORY_ROOM_MAP)).toEqual({ x: 602, y: 298 });
+    expect(movePlayer({ x: 700, y: 280 }, 8, 0, MEMORY_ROOM_MAP)).toEqual({ x: 700, y: 280 });
   });
 
   it('starts the puzzle near an unfinished device and blocks repeat activation', () => {
