@@ -11,7 +11,7 @@ describe('Chapter03 memory object collection', () => {
 
   it('rejects distant interaction and prevents duplicate collection', () => {
     const initial = createCollection();
-    expect(collectNearby(initial, { x: 700, y: 400 })).toBe(initial);
+    expect(collectNearby(initial, { x: 600, y: 240 })).toBe(initial);
     const photoPosition = { x: MEMORY_OBJECTS[0].x - 13, y: MEMORY_OBJECTS[0].y - 13 };
     const once = collectNearby(initial, photoPosition);
     expect(once.collected).toEqual(['photo']);

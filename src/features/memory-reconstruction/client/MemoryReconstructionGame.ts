@@ -1,8 +1,10 @@
 import { awakeningStage, connectMemory, createMemoryGame, familyAtPoint, MEMORY_CLUES, REQUIRED_BY_FAMILY, type FamilyId, type MemoryGameState } from '../shared/gameLogic';
-import { canActivateDevice, canInteract, clearDirections, createFlow, DEVICE, MAP_BOUNDS, movePlayer, OBSTACLES, PLAYER_SIZE, transitionFlow, type FlowState, type Point } from '../shared/mapLogic';
+import { canActivateDevice, canInteract, clearDirections, createFlow, movePlayer, PLAYER_SIZE, transitionFlow, type FlowState, type Point } from '../shared/mapLogic';
+import { MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, type PlayableMapAssetEntry } from '../shared/mapAssetManifest';
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
+import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 
 type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -27,7 +29,7 @@ export class MemoryReconstructionGame {
   private readonly context: CanvasRenderingContext2D;
   private screen: Screen = 'map';
   private state: MemoryGameState = createMemoryGame();
-  private player: Point = { x: 92, y: 260 };
+  private player: Point = { ...SPACESHIP_MAP.spawn };
   private pressed = new Set<Direction>();
   private flow: FlowState = createFlow();
   private collection: CollectionState = createCollection();
@@ -37,11 +39,17 @@ export class MemoryReconstructionGame {
   private awakeningStartedAt = 0;
   private previousTime = performance.now();
   private lastAnnouncement = '';
+  private readonly spaceshipImage = new Image();
+  private readonly memoryRoomImage = new Image();
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
     this.context = context;
+    requirePlayableMap(SPACESHIP_MAP);
+    requirePlayableMap(MEMORY_ROOM_MAP);
+    this.spaceshipImage.src = new URL('../assets/chapter03-spaceship-lab.png', import.meta.url).href;
+    this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room-v2.png', import.meta.url).href;
   }
 
   mount(): void {
@@ -133,7 +141,7 @@ export class MemoryReconstructionGame {
       }
       return;
     }
-    const next = transitionFlow(this.flow, { type: 'interact', allowed: canActivateDevice(this.player, this.flow.deviceComplete) });
+    const next = transitionFlow(this.flow, { type: 'interact', allowed: canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap()) });
     if (next === this.flow) return;
     this.flow = next;
     this.state = createMemoryGame();
@@ -146,7 +154,7 @@ export class MemoryReconstructionGame {
     if (this.screen !== 'result') return;
     this.flow = transitionFlow(this.flow, { type: 'return-to-map' });
     this.screen = 'map';
-    this.player = { x: 650, y: 235 };
+    this.player = { ...(this.flow.deviceComplete ? MEMORY_ROOM_MAP.spawn : SPACESHIP_MAP.spawn) };
     requestAnimationFrame(() => this.controls.directions[0].focus());
   };
 
@@ -237,7 +245,7 @@ export class MemoryReconstructionGame {
     if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
     this.player = this.screen === 'epilogue'
       ? moveEpiloguePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18)
-      : movePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18);
+      : movePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18, this.currentMap());
   }
 
   private render(): void {
@@ -253,24 +261,28 @@ export class MemoryReconstructionGame {
 
   private drawMap(): void {
     const ctx = this.context;
-    ctx.fillStyle = '#111827'; ctx.fillRect(MAP_BOUNDS.x, MAP_BOUNDS.y, MAP_BOUNDS.width, MAP_BOUNDS.height);
-    ctx.strokeStyle = '#374151';
-    for (let x = MAP_BOUNDS.x; x <= 912; x += 48) for (let y = MAP_BOUNDS.y; y <= 492; y += 48) ctx.strokeRect(x, y, 48, 48);
-    ctx.lineWidth = 8; ctx.strokeStyle = '#312e81'; ctx.strokeRect(MAP_BOUNDS.x, MAP_BOUNDS.y, MAP_BOUNDS.width, MAP_BOUNDS.height);
-    for (const obstacle of OBSTACLES) {
-      if (obstacle === DEVICE) continue;
-      ctx.fillStyle = '#1f2937'; ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-      ctx.strokeStyle = '#374151'; ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    const map = this.currentMap();
+    const background = selectChapter03Background(this.flow.deviceComplete, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+      ctx.strokeStyle = '#374151';
+      for (let x = map.bounds.x; x <= map.bounds.x + map.bounds.width; x += 48) for (let y = map.bounds.y; y <= map.bounds.y + map.bounds.height; y += 48) ctx.strokeRect(x, y, 48, 48);
+      ctx.lineWidth = 8; ctx.strokeStyle = '#312e81'; ctx.strokeRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+      for (const obstacle of map.collisions) {
+        if (map.device && obstacle === map.device.bounds) continue;
+        ctx.fillStyle = '#1f2937'; ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        ctx.strokeStyle = '#374151'; ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      }
     }
-    ctx.fillStyle = this.flow.deviceComplete ? '#312e81' : '#1f2937'; ctx.fillRect(DEVICE.x, DEVICE.y, DEVICE.width, DEVICE.height);
-    ctx.strokeStyle = this.flow.deviceComplete ? '#f9fafb' : '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(DEVICE.x, DEVICE.y, DEVICE.width, DEVICE.height);
-    ctx.fillStyle = this.flow.deviceComplete ? '#f9fafb' : '#818cf8'; ctx.textAlign = 'center'; ctx.font = '700 14px system-ui';
-    ctx.fillText(this.flow.deviceComplete ? '재구성 완료' : '금지 장치', DEVICE.x + 46, DEVICE.y + 62);
+    if (map.device) {
+      const device = map.device.bounds;
+      ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height);
+    }
     if (collectionAvailable(this.flow)) this.drawMemoryArea();
     ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
     ctx.fillStyle = '#f9fafb'; ctx.fillRect(this.player.x, this.player.y, PLAYER_SIZE, PLAYER_SIZE);
     ctx.fillStyle = '#312e81'; ctx.fillRect(this.player.x + 5, this.player.y + 5, 6, 6); ctx.fillRect(this.player.x + 16, this.player.y + 5, 6, 6);
-    if (canInteract(this.player) && !this.flow.deviceComplete) {
+    if (canInteract(this.player, map) && !this.flow.deviceComplete) {
       ctx.fillStyle = '#312e81'; ctx.fillRect(300, 448, 360, 42);
       ctx.fillStyle = '#f9fafb'; ctx.textAlign = 'center'; ctx.font = '700 16px system-ui'; ctx.fillText('E 또는 ENTER · 기억 재구성 장치 작동', 480, 475);
     }
@@ -279,7 +291,9 @@ export class MemoryReconstructionGame {
   private drawMemoryArea(): void {
     const ctx = this.context;
     const familyNpcs = [
-      { name: '아내', x: 620, y: 354 }, { name: '큰아들', x: 818, y: 382 }, { name: '작은딸', x: 746, y: 102 },
+      { name: '아내', ...MEMORY_ROOM_MAP.familyMarkers!.wife },
+      { name: '큰아들', ...MEMORY_ROOM_MAP.familyMarkers!.son },
+      { name: '작은딸', ...MEMORY_ROOM_MAP.familyMarkers!.daughter },
     ];
     for (const npc of familyNpcs) {
       ctx.fillStyle = '#818cf8'; ctx.fillRect(npc.x, npc.y, 24, 30);
@@ -287,9 +301,9 @@ export class MemoryReconstructionGame {
     }
     for (const item of MEMORY_OBJECTS) {
       if (this.collection.collected.includes(item.id)) continue;
-      ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(item.x, item.y, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#818cf8'; ctx.strokeRect(item.x - 14, item.y - 14, 28, 28);
-      ctx.fillStyle = '#f9fafb'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(item.name, item.x, item.y - 21);
+      ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(item.markerX, item.markerY, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#818cf8'; ctx.strokeRect(item.markerX - 14, item.markerY - 14, 28, 28);
+      ctx.fillStyle = '#f9fafb'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(item.name, item.markerX, item.markerY - 21);
     }
     ctx.fillStyle = '#111827'; ctx.fillRect(56, 86, 260, 56);
     ctx.fillStyle = '#f9fafb'; ctx.font = '700 16px system-ui'; ctx.textAlign = 'left';
@@ -421,7 +435,7 @@ export class MemoryReconstructionGame {
     this.controls.lettingChoices.hidden = this.screen !== 'letting-go' || this.lettingGo.completed;
     const epilogueCanAdvance = this.screen === 'epilogue' && !['silence', 'corridor', 'archive', 'complete'].includes(this.epilogue.phase);
     this.controls.epilogueNext.hidden = !epilogueCanAdvance;
-    const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete);
+    const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap());
     const nearObject = this.screen === 'map' && collectionAvailable(this.flow) && nearbyMemoryObject(this.player, this.collection) !== null;
     const nearRecord = this.screen === 'epilogue' && nearbyArchiveRecord(this.player, this.epilogue) !== null;
     const nearDoor = this.screen === 'epilogue' && this.epilogue.phase === 'corridor' && nearArchiveDoor(this.player);
@@ -445,5 +459,9 @@ export class MemoryReconstructionGame {
       : `${LETTING_GO_MEMORIES[this.lettingGo.index].object}. ${this.lettingGo.feedback} ${this.lettingGo.resolved.length}개 완료. 붙잡는다, 기록으로 남긴다, 놓아준다 중 선택하세요.`;
     if (this.screen === 'epilogue') message = `${this.epilogue.phase}. ${this.epilogue.message}`;
     if (message !== this.lastAnnouncement) { this.lastAnnouncement = message; this.controls.liveRegion.textContent = message; }
+  }
+
+  private currentMap(): PlayableMapAssetEntry {
+    return this.flow.deviceComplete ? MEMORY_ROOM_MAP : SPACESHIP_MAP;
   }
 }
