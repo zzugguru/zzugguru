@@ -10,18 +10,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:token-usage": "token-usage summary --json",
-    "measure:typecheck": "token-usage run verification -- npm run typecheck",
-    "measure:test": "token-usage run test -- npm run test",
-    "measure:build": "token-usage run build -- npm run build",
-    "token-usage-summary": "token-usage summary",
-    "token-usage-summary:json": "token-usage summary --json",
-    "token-usage-status": "token-usage status",
     "test:watch": "vitest"
   },
   "devDependencies": {
     "@google/design.md": "^0.4.0",
-    "@lwh4data/token-usage": "git+https://github.com/LWH4Data/Token-usage-tracking.git#6b16e7fe15902bd9745e13b8af829b5b574a9ea0",
     "typescript": "^5.9.2",
     "vite": "^7.1.1",
     "vitest": "^3.2.4"

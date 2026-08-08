@@ -9,3 +9,11 @@ export function drawMemoryRoomBackground(
   context.drawImage(image as CanvasImageSource, 0, 0, width, height);
   return true;
 }
+
+export function selectChapter03Background<T>(
+  deviceComplete: boolean,
+  spaceship: T,
+  memoryRoom: T,
+): T {
+  return deviceComplete ? memoryRoom : spaceship;
+}

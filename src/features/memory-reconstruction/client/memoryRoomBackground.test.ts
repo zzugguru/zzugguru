@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { drawMemoryRoomBackground } from './memoryRoomBackground';
+import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 
 describe('Chapter03 memory room background', () => {
+  it('selects the spaceship before reconstruction and the family room after success', () => {
+    const spaceship = { id: 'spaceship' };
+    const memoryRoom = { id: 'memory-room' };
+
+    expect(selectChapter03Background(false, spaceship, memoryRoom)).toBe(spaceship);
+    expect(selectChapter03Background(true, spaceship, memoryRoom)).toBe(memoryRoom);
+  });
+
   it('draws a loaded image across the logical canvas without smoothing', () => {
     const context = { drawImage: vi.fn(), imageSmoothingEnabled: true } as unknown as CanvasRenderingContext2D;
     const image = { complete: true, naturalWidth: 1536 };

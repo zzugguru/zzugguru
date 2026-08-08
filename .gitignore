@@ -10,6 +10,6 @@ coverage/
 /BRIEF.md
 /.agents/
 
-# Generated token usage records and active-stage state
-/Token_usage/output/
+# Local token measurement package and generated records
+/Token_usage/
 /output/

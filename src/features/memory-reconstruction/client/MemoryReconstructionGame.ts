@@ -3,7 +3,7 @@ import { canActivateDevice, canInteract, clearDirections, createFlow, DEVICE, MA
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
-import { drawMemoryRoomBackground } from './memoryRoomBackground';
+import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 
 type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -38,13 +38,15 @@ export class MemoryReconstructionGame {
   private awakeningStartedAt = 0;
   private previousTime = performance.now();
   private lastAnnouncement = '';
+  private readonly spaceshipImage = new Image();
   private readonly memoryRoomImage = new Image();
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
     this.context = context;
-    this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room.png', import.meta.url).href;
+    this.spaceshipImage.src = new URL('../assets/chapter03-spaceship-lab.png', import.meta.url).href;
+    this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room-v2.png', import.meta.url).href;
   }
 
   mount(): void {
@@ -256,7 +258,8 @@ export class MemoryReconstructionGame {
 
   private drawMap(): void {
     const ctx = this.context;
-    if (!drawMemoryRoomBackground(ctx, this.memoryRoomImage)) {
+    const background = selectChapter03Background(this.flow.deviceComplete, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
       ctx.fillStyle = '#111827'; ctx.fillRect(MAP_BOUNDS.x, MAP_BOUNDS.y, MAP_BOUNDS.width, MAP_BOUNDS.height);
       ctx.strokeStyle = '#374151';
       for (let x = MAP_BOUNDS.x; x <= 912; x += 48) for (let y = MAP_BOUNDS.y; y <= 492; y += 48) ctx.strokeRect(x, y, 48, 48);
