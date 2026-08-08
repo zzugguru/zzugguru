@@ -1,46 +1,45 @@
 export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
-export const MAP_BOUNDS: Rect = { x: 48, y: 72, width: 864, height: 420 };
+import { SPACESHIP_MAP, type PlayableMapAssetEntry } from './mapAssetManifest';
+
+export const MAP_BOUNDS: Rect = SPACESHIP_MAP.bounds;
 export const PLAYER_SIZE = 26;
-export const DEVICE: Rect = { x: 704, y: 190, width: 92, height: 116 };
-export const OBSTACLES: readonly Rect[] = [
-  { x: 180, y: 132, width: 170, height: 58 },
-  { x: 180, y: 365, width: 170, height: 58 },
-  { x: 430, y: 106, width: 80, height: 132 },
-  { x: 430, y: 326, width: 80, height: 132 },
-  DEVICE,
-];
+export const DEVICE: Rect = SPACESHIP_MAP.device!.bounds;
+export const OBSTACLES: readonly Rect[] = SPACESHIP_MAP.collisions;
 
 export function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
-export function movePlayer(position: Point, dx: number, dy: number): Point {
+export function movePlayer(position: Point, dx: number, dy: number, map: PlayableMapAssetEntry = SPACESHIP_MAP): Point {
   const tryAxis = (candidate: Point): Point => {
     const body = { ...candidate, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.x >= MAP_BOUNDS.x && body.y >= MAP_BOUNDS.y
-      && body.x + body.width <= MAP_BOUNDS.x + MAP_BOUNDS.width
-      && body.y + body.height <= MAP_BOUNDS.y + MAP_BOUNDS.height;
-    return inside && !OBSTACLES.some((obstacle) => overlaps(body, obstacle)) ? candidate : position;
+    const inside = body.x >= map.bounds.x && body.y >= map.bounds.y
+      && body.x + body.width <= map.bounds.x + map.bounds.width
+      && body.y + body.height <= map.bounds.y + map.bounds.height;
+    return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? candidate : position;
   };
   const afterX = tryAxis({ x: position.x + dx, y: position.y });
   if (afterX !== position) {
     const body = { x: afterX.x, y: afterX.y + dy, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.y >= MAP_BOUNDS.y && body.y + body.height <= MAP_BOUNDS.y + MAP_BOUNDS.height;
-    return inside && !OBSTACLES.some((obstacle) => overlaps(body, obstacle)) ? { x: afterX.x, y: afterX.y + dy } : afterX;
+    const inside = body.y >= map.bounds.y && body.y + body.height <= map.bounds.y + map.bounds.height;
+    return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? { x: afterX.x, y: afterX.y + dy } : afterX;
   }
   return tryAxis({ x: position.x, y: position.y + dy });
 }
 
-export function canInteract(position: Point): boolean {
+export function canInteract(position: Point, map: PlayableMapAssetEntry = SPACESHIP_MAP): boolean {
+  if (!map.device) return false;
   const playerCenter = { x: position.x + PLAYER_SIZE / 2, y: position.y + PLAYER_SIZE / 2 };
-  const deviceCenter = { x: DEVICE.x + DEVICE.width / 2, y: DEVICE.y + DEVICE.height / 2 };
-  return Math.hypot(playerCenter.x - deviceCenter.x, playerCenter.y - deviceCenter.y) <= 118;
+  const device = map.device.bounds;
+  const nearestX = Math.max(device.x, Math.min(playerCenter.x, device.x + device.width));
+  const nearestY = Math.max(device.y, Math.min(playerCenter.y, device.y + device.height));
+  return Math.hypot(playerCenter.x - nearestX, playerCenter.y - nearestY) <= map.device.interactionMargin;
 }
 
-export function canActivateDevice(position: Point, deviceComplete: boolean): boolean {
-  return !deviceComplete && canInteract(position);
+export function canActivateDevice(position: Point, deviceComplete: boolean, map: PlayableMapAssetEntry = SPACESHIP_MAP): boolean {
+  return !deviceComplete && canInteract(position, map);
 }
 
 export type FlowState = {
