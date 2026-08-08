@@ -8,6 +8,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
@@ -44,4 +48,118 @@ canvas {
   color: #c7d2fe;
   font-size: 14px;
   text-align: center;
+}
+
+.chapter-menu {
+  display: grid;
+  gap: 16px;
+  padding: 32px;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  background: #111827;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  text-align: center;
+}
+
+.chapter-menu h1 {
+  margin: 0 0 8px;
+  color: #f9fafb;
+  font-size: 38px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #818cf8;
+}
+
+.chapter-menu button,
+.memory-choices button,
+.letting-go-choices button,
+.map-controls button,
+.return-button,
+.retry-button,
+.epilogue-next {
+  min-height: 48px;
+  border: 1px solid #818cf8;
+  border-radius: 8px;
+  color: #f9fafb;
+  background: #312e81;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chapter-menu button:focus-visible,
+.memory-choices button:focus-visible,
+.letting-go-choices button:focus-visible,
+.map-controls button:focus-visible,
+.return-button:focus-visible {
+  outline: 3px solid #f9fafb;
+  outline-offset: 2px;
+}
+
+.retry-button:focus-visible {
+  outline: 3px solid #f9fafb;
+  outline-offset: 2px;
+}
+
+.epilogue-next:focus-visible {
+  outline: 3px solid #f9fafb;
+  outline-offset: 2px;
+}
+
+.memory-choices,
+.letting-go-choices,
+.map-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.memory-choices[hidden] {
+  display: none;
+}
+
+.map-controls {
+  grid-template-columns: repeat(3, 52px) 1fr;
+  align-items: center;
+}
+
+.map-controls .interact-button {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  min-height: 104px;
+}
+
+.return-button,
+.retry-button,
+.epilogue-next {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.memory-choices button:disabled,
+.letting-go-choices button:disabled,
+.map-controls button:disabled {
+  border-color: #374151;
+  color: #c7d2fe;
+  background: #111827;
+  cursor: not-allowed;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .chapter-menu h1 { font-size: 28px; }
+  .memory-choices { grid-template-columns: 1fr; }
 }

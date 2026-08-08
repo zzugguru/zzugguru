@@ -5,3 +5,7 @@ coverage/
 *.log
 .env
 .env.local
+
+# Local Codex workflow files
+/BRIEF.md
+/.agents/

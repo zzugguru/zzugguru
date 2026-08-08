@@ -1,4 +1,0 @@
-interface:
-  display_name: "Two-Agent Harness"
-  short_description: "Implement and verify the active BRIEF.md task"
-  default_prompt: "Use $two-agent-harness to implement and independently verify the active request in BRIEF.md."
