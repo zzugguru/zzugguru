@@ -1,6 +1,7 @@
 import './style.css';
 import { MemoryReconstructionGame } from './features/memory-reconstruction/client/MemoryReconstructionGame';
 import { RhythmHorrorGame } from './features/rhythm-horror/client/RhythmHorrorGame';
+import { Chapter2Game } from './features/chapter2/client/Chapter2Game';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('#app 요소를 찾을 수 없습니다.');
@@ -11,6 +12,7 @@ app.innerHTML = `
       <p class="eyebrow">ZZUGGURU · STORY PROTOTYPES</p>
       <h1 id="chapter-title">플레이할 챕터를 선택하세요</h1>
       <button type="button" data-game="rhythm">Chapter 01 · 리듬 호러</button>
+      <button type="button" data-game="chapter2">Chapter 02 · 이온</button>
       <button type="button" data-game="memory">Chapter 03 · 마지막 저녁</button>
     </section>
     <section class="game-stage" hidden aria-label="선택한 챕터 게임">
@@ -74,6 +76,11 @@ app.querySelectorAll<HTMLButtonElement>('[data-game]').forEach((button) => butto
       liveRegion,
     }).mount();
     requestAnimationFrame(() => directions[0].focus());
+  } else if (button.dataset.game === 'chapter2') {
+    canvas.setAttribute('aria-label', 'Chapter 02 이온 게임 화면');
+    controlsText.textContent = '이동: 방향키 · 확인: Z 또는 클릭 · CCTV 채널 전환: ◀ ▶';
+    new Chapter2Game(canvas).mount();
+    requestAnimationFrame(() => canvas.focus());
   } else {
     controlsText.textContent = 'D F J K · Enter 시작/다시 시작 · Esc 일시정지';
     new RhythmHorrorGame(canvas).mount();
