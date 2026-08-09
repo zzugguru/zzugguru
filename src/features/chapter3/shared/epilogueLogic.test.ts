@@ -33,7 +33,8 @@ describe('playable Chapter03 epilogue', () => {
   });
 
   it('moves through the corridor with visible-map bounds', () => {
-    expect(moveEpiloguePlayer({ x: 48, y: 90 }, -20, -20)).toEqual({ x: 48, y: 90 });
+    expect(moveEpiloguePlayer({ x: 48, y: 100 }, -20, -20)).toEqual({ x: 48, y: 100 });
+    expect(moveEpiloguePlayer({ x: 886, y: 466 }, 20, 20)).toEqual({ x: 886, y: 466 });
     expect(moveEpiloguePlayer({ x: 100, y: 100 }, 20, 30)).toEqual({ x: 120, y: 130 });
   });
 

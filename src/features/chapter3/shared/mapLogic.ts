@@ -5,6 +5,7 @@ import { SPACESHIP_MAP, type PlayableMapAssetEntry } from './mapAssetManifest';
 
 export const MAP_BOUNDS: Rect = SPACESHIP_MAP.bounds;
 export const PLAYER_SIZE = 26;
+export const PLAYER_SPRITE_TOP_OVERHANG = 10;
 export const DEVICE: Rect = SPACESHIP_MAP.device!.bounds;
 export const OBSTACLES: readonly Rect[] = SPACESHIP_MAP.collisions;
 
@@ -15,7 +16,7 @@ export function overlaps(a: Rect, b: Rect): boolean {
 export function movePlayer(position: Point, dx: number, dy: number, map: PlayableMapAssetEntry = SPACESHIP_MAP): Point {
   const tryAxis = (candidate: Point): Point => {
     const body = { ...candidate, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.x >= map.bounds.x && body.y >= map.bounds.y
+    const inside = body.x >= map.bounds.x && body.y - PLAYER_SPRITE_TOP_OVERHANG >= map.bounds.y
       && body.x + body.width <= map.bounds.x + map.bounds.width
       && body.y + body.height <= map.bounds.y + map.bounds.height;
     return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? candidate : position;
@@ -23,7 +24,7 @@ export function movePlayer(position: Point, dx: number, dy: number, map: Playabl
   const afterX = tryAxis({ x: position.x + dx, y: position.y });
   if (afterX !== position) {
     const body = { x: afterX.x, y: afterX.y + dy, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.y >= map.bounds.y && body.y + body.height <= map.bounds.y + map.bounds.height;
+    const inside = body.y - PLAYER_SPRITE_TOP_OVERHANG >= map.bounds.y && body.y + body.height <= map.bounds.y + map.bounds.height;
     return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? { x: afterX.x, y: afterX.y + dy } : afterX;
   }
   return tryAxis({ x: position.x, y: position.y + dy });
