@@ -1,6 +1,6 @@
 import './style.css';
-import { MemoryReconstructionGame } from './features/memory-reconstruction/client/MemoryReconstructionGame';
-import { RhythmHorrorGame } from './features/rhythm-horror/client/RhythmHorrorGame';
+import { RhythmHorrorGame } from './features/chapter1/client/RhythmHorrorGame';
+import { MemoryReconstructionGame } from './features/chapter3/client/MemoryReconstructionGame';
 import { Chapter2Game } from './features/chapter2/client/Chapter2Game';
 
 const app = document.querySelector<HTMLElement>('#app');

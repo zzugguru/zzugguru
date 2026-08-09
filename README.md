@@ -46,8 +46,11 @@ npm run preview     # 빌드 결과를 로컬에서 확인
 │       └── deploy-pages.yml        # main 검증 후 Pages 자동 배포
 ├── src/                     # 실제 배포되는 게임 코드
 │   ├── features/            # 클라이언트부터 서버까지 기능별 코드
+│   │   ├── chapter1/        # 리듬 호러 챕터 코드와 전용 에셋
+│   │   ├── chapter2/        # 2장 코드
+│   │   ├── chapter3/        # 기억 재구성 챕터 코드와 전용 에셋
 │   │   └── welcome/         # 첫 화면 예제 기능
-│   │       └── client/
+│   ├── assets/              # 두 개 이상의 챕터가 공통으로 사용하는 에셋
 │   ├── platform/            # 여러 기능이 사용하는 실행 기반
 │   │   └── client/          # 게임 루프, 입력, 라우팅
 │   ├── shared/              # 여러 기능이 실제로 공유하는 작은 코드
@@ -114,6 +117,8 @@ Pull Request에서는 `.github/workflows/pull-request-checks.yml`이 검사만 �
 ## 새 코드를 어디에 만들까?
 
 - 한 기능에서만 사용: `src/features/<기능명>/`
+- 한 챕터에서만 사용하는 에셋: `src/features/chapterN/assets/`
+- 두 개 이상의 챕터가 공통으로 사용하는 에셋: `src/assets/`
 - 기능 전용 클라이언트·서버 공통 타입: `src/features/<기능명>/shared/`
 - 기능 하나의 재현 시나리오와 테스트: `src/features/<기능명>/tests/`
 - 여러 기능이 사용하는 브라우저·서버 기반: `src/platform/`
