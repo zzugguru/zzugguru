@@ -62,6 +62,40 @@ components:
   health-meter:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
+  memory-vessel:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.sm}"
+  memory-vessel-active:
+    backgroundColor: "{colors.surface-accent}"
+    textColor: "{colors.text}"
+  memory-vessel-danger:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.danger}"
+  chapter-menu:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.lg}"
+  game-choice-button:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+  map-control-button:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+  memory-object:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.sm}"
+  letting-go-choice:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+  epilogue-progress:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
 ---
 
 # ZZUGGURU Design System
@@ -116,6 +150,12 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 - `welcome-title`은 가장 높은 시각적 위계를 가진 시작 화면 제목이다.
 - `welcome-message`는 플레이어에게 다음 행동을 안내하는 보조 문구다.
 - `rhythm-lane`은 네 입력 레인과 눌림 상태를, `rhythm-danger`는 실패 판정을, `health-meter`는 현재 실패 위험을 표시한다.
+- `memory-vessel`은 Chapter03 기억 재구성 퍼즐의 세 가족 용기를 나타낸다. `feedback`은 연결 완료, `danger`는 불안정과 실패에만 사용하며 텍스트를 함께 표시한다.
+- `chapter-menu`는 기존 Chapter01과 새 Chapter03을 보존하면서 진입점을 제공한다. `game-choice-button`은 챕터와 가족 용기 선택에 사용하고 hover, focus, disabled 상태를 구분한다.
+- `map-control-button`은 Chapter03 연구 구역의 포인터·터치 이동과 장치 상호작용에 사용하며 키보드 조작과 동일한 기능을 제공한다.
+- `memory-object`는 재구성 성공 이후 맵에서 정리할 추억 물건, 진행 HUD, 기억의 빈틈 대화를 표시한다.
+- `letting-go-choice`는 추억 정리 완료 후 붙잡기·기록하기·놓아주기 선택과 비게임오버 재선택 피드백을 표시한다.
+- `epilogue-progress`는 기록 배치, 몽타주, 고향별, 경비일지와 크레딧 후 장면을 한 단계씩 진행하는 조용한 후일담 UI다.
 
 버튼, HUD, 패널 등 아직 구현되지 않은 컴포넌트는 미리 추측해 정의하지 않는다. 처음 추가할 때 상태와 접근성 요구사항을 함께 정의한다.
 
