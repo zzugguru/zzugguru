@@ -114,6 +114,8 @@
 - `agents/openai.yaml`: Codex UI에 표시할 스킬 이름, 설명, 기본 호출 프롬프트
 - `00_Two_Agent_Harness_Guaid.md`: 개발자가 읽는 온보딩 및 운영 설명서
 
+검증 서브에이전트는 기본적으로 `gpt-5.6-terra`와 `high` reasoning effort를 사용합니다. 인증·권한·보안·결제·데이터 마이그레이션·동시성·데이터 무결성, 대규모 아키텍처 변경, 복합 기능 버그처럼 위험도가 높은 작업은 `gpt-5.6-sol`과 `high` reasoning effort로 승격합니다.
+
 스킬은 `$two-agent-harness`로 명시적으로 호출할 수 있습니다. 또한 이 저장소의 `AGENTS.md`는 동작을 변경하는 기능 개발에 이 스킬을 사용하도록 지시합니다.
 
 `AGENTS.md`의 탐색은 Codex 실행을 시작할 때 한 번 이루어집니다. 이 파일을 새로 추가하거나 변경한 직후에는 **새 Codex 대화나 세션을 시작해 적용**합니다. 새 대화에서 다음처럼 확인할 수 있습니다.

@@ -31,6 +31,8 @@ For a behavior-changing feature that includes implementation, use the repository
 - If the prompt and `BRIEF.md` conflict or recency is unclear, ask the user to reconcile them before implementation.
 - Keep the total agent count at two: the main implementing agent and one reviewing subagent.
 - Implement first, then delegate a read-only independent review. Do not run concurrent writes.
+- Use `gpt-5.6-terra` with `high` reasoning effort for the reviewing subagent by default.
+- Escalate the reviewer to `gpt-5.6-sol` with `high` reasoning effort for authentication, authorization, security, payments, data migrations, concurrency, data-integrity risks, large architectural changes, or complex cross-feature bugs.
 - Have the main agent address valid findings and ask the same reviewer to verify the fixes.
 - Do not use this workflow for explanations, status reports, trivial documentation-only edits, or read-only investigations unless the user explicitly requests it.
 
