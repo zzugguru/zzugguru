@@ -75,7 +75,7 @@ app.querySelectorAll<HTMLButtonElement>('[data-game]').forEach((button) => butto
     }).mount();
     requestAnimationFrame(() => directions[0].focus());
   } else {
-    controlsText.textContent = 'D F J K · Enter 시작/다시 시작 · Esc 일시정지';
+    controlsText.textContent = 'A/D 이동 · S 숨기 · Shift 달리기 · W 문 통과 · Esc 일시정지';
     new RhythmHorrorGame(canvas).mount();
     requestAnimationFrame(() => canvas.focus());
   }

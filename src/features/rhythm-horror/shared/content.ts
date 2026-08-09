@@ -1,24 +1,22 @@
-import { BEAT_MS, buildBeatChart } from './gameLogic';
+import { BEAT_MS, DURATION_BEATS, buildBeatChart } from './gameLogic';
 
 export const CHART = buildBeatChart();
-export const DURATION_MS = (CHART.length + 4) * BEAT_MS;
+export const DURATION_MS = (DURATION_BEATS + 4) * BEAT_MS;
 
 export interface StoryCue {
   timeMs: number;
-  chapter: string;
+  label: string;
   message: string;
-  location: string;
-  threatLevel: number;
+  danger: boolean;
 }
 
 export const STORY_CUES: StoryCue[] = [
-  { timeMs: 0, chapter: '야간 근무', message: '화면을 지켜보는 것. 그것으로 충분했다.', location: '경비실', threatLevel: 0 },
-  { timeMs: 10_000, chapter: '오전 3시 33분', message: '지하주차장 17번 기둥 옆에 누군가 서 있다.', location: '지하 복도', threatLevel: 1 },
-  { timeMs: 22_000, chapter: '조금씩 가까이', message: '여자는 걸어온 적이 없다. 그런데 매일 더 가까워졌다.', location: '1층 로비', threatLevel: 2 },
-  { timeMs: 28_000, chapter: '가족사진', message: '영수는 가족사진을 품에 안았다. 아내의 미소와 닮아 있었다.', location: '경비실 CCTV', threatLevel: 2 },
-  { timeMs: 34_000, chapter: '삭제된 박자', message: '소리가 비어도 발걸음의 간격을 기억해야 한다.', location: '기계실', threatLevel: 3 },
-  { timeMs: 46_000, chapter: '의자 바로 뒤', message: '화면 속 영수의 뒤에 여자가 서 있었다.', location: '경비실 앞', threatLevel: 4 },
-  { timeMs: 56_000, chapter: '그 얼굴은', message: '아내가 아니었다. 어둠이 복도 끝에서 달려온다.', location: 'B1 주차장', threatLevel: 5 },
+  { timeMs: 0, label: 'B1 · 지하 복도', message: '빛에서는 멈추고, 어둠에서는 움직여라.', danger: false },
+  { timeMs: 10_000, label: '접근 신호', message: '발소리는 보이지 않는 거리까지 알려준다.', danger: false },
+  { timeMs: 20_000, label: '창고 구역', message: '철제 상자는 천천히 몸을 낮춰 지나가라.', danger: false },
+  { timeMs: 30_000, label: '신호 결손', message: '하나의 박자가 사라졌다. 간격은 그대로다.', danger: true },
+  { timeMs: 42_000, label: '기계실', message: '화면보다 몸이 기억한 박자를 믿어라.', danger: true },
+  { timeMs: 50_000, label: '규칙 붕괴', message: '놈이 빛 속에서도 움직인다. 비상문까지 달려!', danger: true },
 ];
 
 export function cueAt(timeMs: number): StoryCue {

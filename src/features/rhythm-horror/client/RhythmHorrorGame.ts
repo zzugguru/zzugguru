@@ -1,49 +1,43 @@
 import backgroundMusicUrl from '../../../assets/어둠의 추격.mp3';
-import { CHART, DURATION_MS, cueAt } from '../shared/content';
+import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
+import { CHART, cueAt } from '../shared/content';
 import {
   BEAT_MS,
   BPM,
-  LEAD_IN_BEATS,
-  judgeAction,
-  overdueNotes,
-  phaseForBeat,
-  scoreFor,
-  type BeatNote,
-  type Judgement,
-  type RhythmAction,
+  COVER_ZONES,
+  EXIT_X,
+  NOISE_OBSTACLES,
+  STAGE_DURATION_MS,
+  STAGE_WIDTH,
+  beatAt,
+  createStageState,
+  stepStage,
+  type PlayerInput,
   type RhythmPhase,
+  type StageState,
 } from '../shared/gameLogic';
-import { GameMusic, type GameMusicControl } from './GameMusic';
 import { BeatClick, beatIndexAt, type BeatClickControl } from './BeatClick';
+import { GameMusic, type GameMusicControl } from './GameMusic';
 
 type Screen = 'title' | 'loading' | 'playing' | 'paused' | 'result';
 
 const COLORS = {
-  background: '#030712',
-  surface: '#111827',
-  primary: '#312e81',
-  feedback: '#818cf8',
-  danger: '#fb7185',
-  text: '#f9fafb',
-  muted: '#c7d2fe',
-  border: '#374151',
+  background: '#030712', surface: '#111827', primary: '#312e81', feedback: '#818cf8',
+  danger: '#fb7185', text: '#f9fafb', muted: '#c7d2fe', border: '#374151',
 } as const;
+
+const EMPTY_INPUT: PlayerInput = { left: false, right: false, crouch: false, run: false, interact: false };
 
 export class RhythmHorrorGame {
   private readonly context: CanvasRenderingContext2D;
+  private readonly backgroundImage: HTMLImageElement | null;
   private screen: Screen = 'title';
-  private resolved = new Set<number>();
-  private score = 0;
-  private combo = 0;
-  private maxCombo = 0;
-  private hearts = 3;
-  private threat = 22;
-  private progress = 0;
-  private lastJudgement: Judgement | null = null;
-  private lastAction: RhythmAction | null = null;
-  private judgementUntil = 0;
-  private resultSurvived = false;
+  private state: StageState = createStageState();
+  private inputState: PlayerInput = { ...EMPTY_INPUT };
   private animationId: number | null = null;
+  private lastUpdateMs = 0;
+  private checkpointForRetry = 0;
+  private readonly touchInputs = new Map<number, keyof PlayerInput>();
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -53,63 +47,78 @@ export class RhythmHorrorGame {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
     this.context = context;
+    this.backgroundImage = typeof Image === 'undefined' ? null : new Image();
+    if (this.backgroundImage) this.backgroundImage.src = basementBackgroundUrl;
   }
 
   mount(): void {
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('blur', this.releaseInput);
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('pointerup', this.onPointerUp);
+    this.canvas.addEventListener('pointercancel', this.onPointerUp);
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
-    this.canvas.setAttribute('aria-label', '새벽 3시 33분. 빛에서는 숨고 어둠에서는 이동하는 리듬 호러 게임');
+    this.canvas.setAttribute('aria-label', '4번째 박자. 빛에서는 멈추고 어둠에서는 이동하는 횡스크롤 리듬 스텔스 게임');
     if (this.animationId === null) this.animationId = requestAnimationFrame(this.loop);
-  }
-
-  input(action: RhythmAction): void {
-    if (this.screen !== 'playing') return;
-    const result = judgeAction(CHART, this.resolved, action, this.music.timeMs());
-    if (result.note) this.resolved.add(result.note.id);
-    this.applyJudgement(result.judgement, action, result.note);
   }
 
   async togglePause(): Promise<void> {
     if (this.screen === 'playing') {
       this.music.pause();
       this.beatClick.pause();
+      this.releaseInput();
       this.screen = 'paused';
-      return;
-    }
-    if (this.screen === 'paused') {
+    } else if (this.screen === 'paused') {
       await Promise.all([this.music.resume(), this.beatClick.resume()]);
+      this.lastUpdateMs = this.music.timeMs();
       if (this.screen === 'paused') this.screen = 'playing';
     }
   }
 
+  private readonly releaseInput = (): void => {
+    this.inputState = { ...EMPTY_INPUT };
+    this.touchInputs.clear();
+  };
+
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Enter' && (this.screen === 'title' || this.screen === 'result')) {
       event.preventDefault();
-      void this.start();
+      void this.start(this.screen === 'result' && this.state.result === 'dead' ? this.checkpointForRetry : 0);
       return;
     }
     if (event.code === 'Escape' && (this.screen === 'playing' || this.screen === 'paused')) {
       event.preventDefault();
-      void this.togglePause();
+      if (!event.repeat) void this.togglePause();
       return;
     }
-    if (event.code === 'Space') {
+    if (this.screen !== 'playing') return;
+    const key = this.inputKey(event.code);
+    if (key) {
       event.preventDefault();
-      if (!event.repeat) this.input('hide');
-      return;
-    }
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(event.code)) {
-      event.preventDefault();
-      if (!event.repeat) this.input('move');
+      this.inputState[key] = true;
     }
   };
+
+  private readonly onKeyUp = (event: KeyboardEvent): void => {
+    const key = this.inputKey(event.code);
+    if (key) this.inputState[key] = false;
+  };
+
+  private inputKey(code: string): keyof PlayerInput | null {
+    if (code === 'KeyA' || code === 'ArrowLeft') return 'left';
+    if (code === 'KeyD' || code === 'ArrowRight') return 'right';
+    if (code === 'KeyS' || code === 'ArrowDown') return 'crouch';
+    if (code === 'ShiftLeft' || code === 'ShiftRight') return 'run';
+    if (code === 'KeyW' || code === 'ArrowUp') return 'interact';
+    return null;
+  }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     this.canvas.focus();
     if (this.screen === 'title' || this.screen === 'result') {
-      void this.start();
+      void this.start(this.screen === 'result' && this.state.result === 'dead' ? this.checkpointForRetry : 0);
       return;
     }
     if (this.screen === 'paused') {
@@ -119,22 +128,32 @@ export class RhythmHorrorGame {
     const rect = this.canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * this.canvas.width;
     const y = ((event.clientY - rect.top) / rect.height) * this.canvas.height;
-    if (y >= 455 && y <= 525) this.input(x < 180 ? 'hide' : x < 330 ? 'move' : this.currentPhase() === 'light' ? 'hide' : 'move');
+    if (y < 458) return;
+    let key: keyof PlayerInput;
+    if (x < 105) key = 'left';
+    else if (x < 210) key = 'right';
+    else if (x < 315) key = 'crouch';
+    else if (x > 820) key = 'interact';
+    else key = 'run';
+    this.touchInputs.set(event.pointerId, key);
+    this.inputState[key] = true;
+    this.canvas.setPointerCapture?.(event.pointerId);
   };
 
-  private async start(): Promise<void> {
-    this.resolved = new Set();
-    this.score = 0;
-    this.combo = 0;
-    this.maxCombo = 0;
-    this.hearts = 3;
-    this.threat = 22;
-    this.progress = 0;
-    this.lastJudgement = null;
-    this.lastAction = null;
-    this.resultSurvived = false;
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    const key = this.touchInputs.get(event.pointerId);
+    if (!key) return;
+    this.touchInputs.delete(event.pointerId);
+    if (![...this.touchInputs.values()].includes(key)) this.inputState[key] = false;
+  };
+
+  private async start(checkpointX = 0): Promise<void> {
+    this.releaseInput();
+    this.state = createStageState(checkpointX || undefined);
+    this.checkpointForRetry = checkpointX;
     this.screen = 'loading';
     await Promise.all([this.music.restart(), this.beatClick.start()]);
+    this.lastUpdateMs = this.music.timeMs();
     if (this.screen === 'loading') this.screen = 'playing';
   }
 
@@ -146,419 +165,266 @@ export class RhythmHorrorGame {
 
   private update(): void {
     const time = this.music.timeMs();
+    const delta = Math.min(50, Math.max(0, time - this.lastUpdateMs));
+    this.lastUpdateMs = time;
     const beatIndex = beatIndexAt(time);
     this.beatClick.sync(time, CHART[beatIndex]);
-    for (const note of overdueNotes(CHART, this.resolved, time)) {
-      this.resolved.add(note.id);
-      this.applyJudgement('miss', null, note);
-      if (this.screen === 'result') return;
+    this.state = stepStage(this.state, this.inputState, time, delta);
+    if (this.inputState.interact) this.inputState.interact = false;
+    if (this.state.checkpointX > this.checkpointForRetry) this.checkpointForRetry = this.state.checkpointX;
+    if (this.state.result !== 'playing') {
+      this.music.pause();
+      this.beatClick.pause();
+      this.releaseInput();
+      this.screen = 'result';
     }
-    if (time >= DURATION_MS) this.finish(this.hearts > 0 && this.progress >= 38);
-  }
-
-  private applyJudgement(judgement: Judgement, action: RhythmAction | null, note: BeatNote | null): void {
-    this.lastJudgement = judgement;
-    this.lastAction = action;
-    this.judgementUntil = performance.now() + 430;
-
-    if (judgement === 'perfect' || judgement === 'good') {
-      this.combo += 1;
-      this.maxCombo = Math.max(this.maxCombo, this.combo);
-      this.score += scoreFor(judgement, this.combo);
-      if (action === 'move') {
-        this.progress += 1;
-        this.threat = Math.max(0, this.threat - 11);
-      } else {
-        this.threat = Math.max(0, this.threat - 7);
-      }
-      return;
-    }
-
-    this.combo = 0;
-    this.threat += judgement === 'wrong' ? 25 : note ? 15 : 7;
-    while (this.threat >= 100 && this.hearts > 0) {
-      this.hearts -= 1;
-      this.threat -= 42;
-    }
-    if (this.hearts <= 0) this.finish(false);
-  }
-
-  private finish(survived: boolean): void {
-    this.resultSurvived = survived;
-    this.music.pause();
-    this.beatClick.pause();
-    this.screen = 'result';
-  }
-
-  private currentPhase(time = this.music.timeMs()): RhythmPhase {
-    const globalBeat = Math.max(0, Math.floor(time / BEAT_MS) - LEAD_IN_BEATS);
-    return phaseForBeat((globalBeat % 4) + 1);
   }
 
   private render(): void {
     const time = this.screen === 'title' ? 0 : this.music.timeMs();
-    const phase = this.currentPhase(time);
-    this.drawHallway(time, phase);
-    if (this.screen === 'title') {
-      this.drawTitle();
-      return;
+    const beat = beatAt(time);
+    const shake = this.screen === 'playing' ? Math.max(0, this.state.tension - 62) / 38 : 0;
+    const ctx = this.context;
+    ctx.save();
+    if (shake > 0) ctx.translate(Math.sin(time / 31) * shake * 2, Math.cos(time / 43) * shake);
+    this.drawWorld(time, beat.phase);
+    ctx.restore();
+    if (this.screen !== 'title') {
+      this.drawHud(time);
+      this.drawBeatRail(time, beat.phase);
+      this.drawTouchControls(time);
     }
-    this.drawHud(time);
-    this.drawNarrative(time);
-    this.drawBeatRail(time, phase);
-    this.drawTouchControls(phase);
-    if (this.screen === 'loading') this.drawOverlay('음악 신호 연결 중', '잠시만 기다려 주세요');
+    if (this.screen === 'title') this.drawTitle();
+    if (this.screen === 'loading') this.drawOverlay('B1 신호 동기화 중', '메트로놈과 비상 조명을 연결하고 있습니다.');
     if (this.screen === 'paused') this.drawOverlay('일시정지', 'Esc 또는 화면을 눌러 계속');
     if (this.screen === 'result') this.drawResult();
   }
 
-  private drawHallway(time: number, phase: RhythmPhase): void {
+  private drawWorld(time: number, phase: RhythmPhase): void {
     const ctx = this.context;
-    const cue = cueAt(time);
-    const finalChase = cue.threatLevel >= 5;
+    const finalChase = time >= 50_000;
     const lightOn = phase === 'light';
+    const cameraX = Math.max(0, Math.min(STAGE_WIDTH - 960, this.state.playerX - 250));
     const gradient = ctx.createLinearGradient(0, 0, 0, 540);
-    gradient.addColorStop(0, lightOn ? '#101c1c' : COLORS.background);
-    gradient.addColorStop(0.65, finalChase ? '#210910' : lightOn ? '#142326' : '#080d17');
+    gradient.addColorStop(0, lightOn ? '#152728' : COLORS.background);
+    gradient.addColorStop(0.72, finalChase ? '#230910' : lightOn ? '#102023' : '#070c15');
     gradient.addColorStop(1, '#030712');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 960, 540);
 
-    ctx.fillStyle = lightOn ? '#152526' : '#0b111c';
-    ctx.fillRect(0, 72, 960, 280);
-    ctx.strokeStyle = lightOn ? 'rgba(199,210,254,.14)' : 'rgba(55,65,81,.42)';
-    ctx.lineWidth = 1;
-    for (let y = 82; y < 352; y += 28) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(960, y);
-      ctx.stroke();
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+    const backgroundReady = Boolean(this.backgroundImage?.complete && this.backgroundImage.naturalWidth > 0);
+    if (backgroundReady && this.backgroundImage) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.backgroundImage, 0, -180, STAGE_WIDTH, 720);
+      ctx.fillStyle = lightOn ? 'rgba(214,211,154,.055)' : 'rgba(3,7,18,.34)';
+      ctx.fillRect(0, 72, STAGE_WIDTH, 386);
+    } else {
+      ctx.fillStyle = lightOn ? '#182829' : '#090f18';
+      ctx.fillRect(0, 72, STAGE_WIDTH, 320);
+      ctx.strokeStyle = lightOn ? 'rgba(199,210,254,.12)' : 'rgba(55,65,81,.44)';
+      for (let x = 0; x < STAGE_WIDTH; x += 96) {
+        ctx.strokeRect(x, 74, 96, 244);
+        ctx.beginPath(); ctx.moveTo(x + 48, 74); ctx.lineTo(x + 48, 318); ctx.stroke();
+      }
+      this.drawPipe(0, 112, STAGE_WIDTH);
+      for (let x = 180; x < STAGE_WIDTH; x += 310) this.drawLamp(x, 72, lightOn, finalChase);
     }
-    for (let x = 0; x < 960; x += 74) {
-      const offset = Math.floor(x / 74) % 2 ? 18 : 0;
-      ctx.beginPath();
-      ctx.moveTo(x + offset, 72);
-      ctx.lineTo(x + offset, 352);
-      ctx.stroke();
-    }
+    this.drawZoneLabel(92, 'B1-01', '지하 복도');
+    this.drawZoneLabel(690, 'B1-02', '창고');
+    this.drawZoneLabel(1_260, 'B1-03', '기계실');
+    this.drawExit(EXIT_X, lightOn);
+    for (const x of NOISE_OBSTACLES) this.drawObstacle(x);
+    for (const x of COVER_ZONES) this.drawCover(x);
 
-    this.drawDoor(88, 156, 'B1', '보관실', lightOn);
-    this.drawDoor(742, 142, cue.location, '03:33', lightOn);
-    this.drawLamp(260, 72, lightOn, finalChase);
-    this.drawLamp(612, 72, lightOn, finalChase);
-
-    ctx.fillStyle = lightOn ? '#17262a' : '#080d15';
-    ctx.beginPath();
-    ctx.moveTo(0, 352);
-    ctx.lineTo(960, 352);
-    ctx.lineTo(960, 454);
-    ctx.lineTo(0, 454);
-    ctx.closePath();
-    ctx.fill();
+    ctx.fillStyle = backgroundReady
+      ? lightOn ? 'rgba(20,35,39,.24)' : 'rgba(3,7,18,.42)'
+      : lightOn ? '#142327' : '#080d15';
+    ctx.fillRect(0, 354, STAGE_WIDTH, 104);
     ctx.strokeStyle = 'rgba(129,140,248,.12)';
-    for (let x = 0; x <= 960; x += 80) {
-      ctx.beginPath();
-      ctx.moveTo(480, 352);
-      ctx.lineTo(x, 454);
-      ctx.stroke();
+    for (let x = 0; x < STAGE_WIDTH; x += 80) {
+      ctx.beginPath(); ctx.moveTo(x, 354); ctx.lineTo(x + 24, 458); ctx.stroke();
     }
-    for (let y = 366; y < 454; y += 22) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(960, y);
-      ctx.stroke();
-    }
+    ctx.fillStyle = 'rgba(129,140,248,.14)';
+    ctx.fillRect(this.state.checkpointX - 34, 448, 68, 4);
 
-    const playerX = 150 + Math.min(1, this.progress / 55) * 270;
-    const monsterX = 830 - this.threat * 2.45;
-    this.drawPlayer(playerX, 322, phase === 'dark' && this.lastAction === 'move');
-    this.drawMonster(Math.max(playerX + 72, monsterX), 280, finalChase);
+    this.drawPlayer(this.state.playerX, 357, phase === 'dark' && (this.inputState.left || this.inputState.right), this.inputState.crouch);
+    this.drawMonster(this.state.monsterX, 347, this.state.monsterMode === 'chase', time);
+    if (this.state.lastNoiseX !== null && time < this.state.noiseUntilMs) this.drawNoise(this.state.lastNoiseX, 342, time);
+    ctx.restore();
 
-    if (phase === 'dark') {
-      ctx.fillStyle = 'rgba(3,7,18,.54)';
-      ctx.fillRect(0, 72, 960, 382);
+    if (!lightOn) {
+      const playerScreenX = this.state.playerX - cameraX;
+      const vignette = ctx.createRadialGradient(playerScreenX, 330, 36, playerScreenX, 330, 350);
+      vignette.addColorStop(0, 'rgba(3,7,18,.08)');
+      vignette.addColorStop(1, 'rgba(3,7,18,.78)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 72, 960, 386);
     }
-    if (Math.floor(time / 333) % 23 === 0 || cue.threatLevel >= 4) {
-      ctx.fillStyle = finalChase ? 'rgba(251,113,133,.08)' : 'rgba(249,250,251,.045)';
-      for (let y = 0; y < 454; y += 9) ctx.fillRect(0, y, 960, 2);
+    if (finalChase) {
+      ctx.fillStyle = `rgba(251,113,133,${0.035 + Math.sin(time / 120) * 0.02})`;
+      ctx.fillRect(0, 72, 960, 386);
     }
   }
 
-  private drawDoor(x: number, y: number, label: string, sublabel: string, lit: boolean): void {
+  private drawPipe(x: number, y: number, width: number): void {
     const ctx = this.context;
-    ctx.fillStyle = lit ? '#162c2c' : '#0b111a';
-    ctx.fillRect(x, y, 122, 196);
-    ctx.strokeStyle = lit ? '#45605f' : COLORS.border;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x, y, 122, 196);
-    ctx.fillStyle = lit ? '#76a89e' : '#556176';
-    ctx.font = '700 20px monospace';
-    ctx.fillText(label, x + 14, y + 34);
-    ctx.font = '12px Pretendard, system-ui';
-    ctx.fillText(sublabel, x + 14, y + 53);
-    ctx.fillRect(x + 96, y + 98, 7, 7);
+    ctx.strokeStyle = '#24303d'; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + width, y); ctx.stroke();
+    ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.lineTo(x + width, y - 2); ctx.stroke();
   }
 
   private drawLamp(x: number, y: number, lit: boolean, danger: boolean): void {
     const ctx = this.context;
-    ctx.fillStyle = danger ? '#fb7185' : lit ? '#d9d692' : '#556176';
-    ctx.fillRect(x - 30, y, 60, 7);
-    ctx.fillRect(x - 5, y + 7, 10, 9);
+    ctx.fillStyle = danger ? COLORS.danger : lit ? '#d6d39a' : '#4b5563';
+    ctx.fillRect(x - 28, y, 56, 7); ctx.fillRect(x - 4, y + 7, 8, 9);
     if (!lit && !danger) return;
-    const glow = ctx.createRadialGradient(x, y + 18, 2, x, y + 18, 110);
-    glow.addColorStop(0, danger ? 'rgba(251,113,133,.24)' : 'rgba(217,214,146,.2)');
-    glow.addColorStop(1, 'rgba(3,7,18,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(x - 120, y, 240, 210);
+    const glow = ctx.createRadialGradient(x, y + 20, 4, x, y + 20, 125);
+    glow.addColorStop(0, danger ? 'rgba(251,113,133,.22)' : 'rgba(214,211,154,.17)'); glow.addColorStop(1, 'rgba(3,7,18,0)');
+    ctx.fillStyle = glow; ctx.fillRect(x - 140, y, 280, 250);
   }
 
-  private drawPlayer(x: number, y: number, moving: boolean): void {
+  private drawZoneLabel(x: number, code: string, label: string): void {
     const ctx = this.context;
-    const bob = moving ? Math.sin(this.music.timeMs() / 70) * 3 : 0;
-    ctx.save();
-    ctx.translate(Math.round(x), Math.round(y + bob));
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(-14, -48, 30, 38);
-    ctx.fillStyle = '#c3a98e';
-    ctx.fillRect(-11, -65, 24, 19);
-    ctx.fillStyle = '#202735';
-    ctx.fillRect(-14, -70, 30, 11);
-    ctx.fillStyle = '#818cf8';
-    ctx.fillRect(-10, -36, 5, 18);
-    ctx.fillStyle = '#080b12';
-    ctx.fillRect(-12, -10, 9, 22);
-    ctx.fillRect(7, -10, 9, 22);
-    ctx.fillStyle = COLORS.text;
-    ctx.fillRect(8, -58, 3, 3);
-    ctx.restore();
+    ctx.fillStyle = '#25303a'; ctx.fillRect(x, 164, 118, 50);
+    ctx.fillStyle = COLORS.muted; ctx.font = '700 16px monospace'; ctx.fillText(code, x + 12, 185);
+    ctx.font = '12px Pretendard, system-ui'; ctx.fillText(label, x + 12, 202);
   }
 
-  private drawMonster(x: number, y: number, enraged: boolean): void {
+  private drawExit(x: number, lit: boolean): void {
     const ctx = this.context;
-    const scale = 0.85 + this.threat / 230;
-    ctx.save();
-    ctx.translate(Math.round(x), y);
-    ctx.scale(scale, scale);
-    ctx.fillStyle = enraged ? '#13080d' : '#090d14';
-    ctx.beginPath();
-    ctx.ellipse(0, 10, 42, 74, -0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(-2, -58, 34, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = enraged ? '#1b0a10' : '#0b1018';
-    ctx.beginPath();
-    ctx.moveTo(-30, -6);
-    ctx.lineTo(-60, 60);
-    ctx.moveTo(30, -5);
-    ctx.lineTo(58, 62);
-    ctx.stroke();
-    ctx.fillStyle = COLORS.danger;
-    ctx.fillRect(-19, -64, 6, 5);
-    ctx.fillRect(10, -62, 6, 5);
-    ctx.restore();
+    ctx.fillStyle = lit ? '#172e2d' : '#0b111a'; ctx.fillRect(x - 25, 184, 92, 170);
+    ctx.strokeStyle = this.state.playerX >= EXIT_X - 24 ? COLORS.feedback : '#42515b'; ctx.lineWidth = 3; ctx.strokeRect(x - 25, 184, 92, 170);
+    ctx.fillStyle = COLORS.danger; ctx.fillRect(x - 12, 198, 66, 20);
+    ctx.fillStyle = COLORS.text; ctx.font = '700 11px monospace'; ctx.fillText('EXIT / W', x - 7, 212);
+  }
+
+  private drawObstacle(x: number): void {
+    const ctx = this.context;
+    ctx.fillStyle = '#1c2731'; ctx.fillRect(x - 20, 318, 42, 36);
+    ctx.strokeStyle = '#4b5563'; ctx.strokeRect(x - 20, 318, 42, 36);
+    ctx.beginPath(); ctx.moveTo(x - 15, 325); ctx.lineTo(x + 15, 347); ctx.moveTo(x + 15, 325); ctx.lineTo(x - 15, 347); ctx.stroke();
+  }
+
+  private drawCover(x: number): void {
+    const ctx = this.context;
+    ctx.fillStyle = '#111a24'; ctx.fillRect(x - 38, 288, 76, 66);
+    ctx.strokeStyle = '#374151'; ctx.strokeRect(x - 38, 288, 76, 66);
+    ctx.fillStyle = '#c7d2fe'; ctx.font = '9px monospace'; ctx.fillText('S / HIDE', x - 27, 308);
+  }
+
+  private drawPlayer(x: number, y: number, moving: boolean, crouching: boolean): void {
+    const ctx = this.context;
+    const bob = moving ? Math.sin(this.music.timeMs() / 65) * 3 : 0;
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y + bob + (crouching ? 19 : 0)));
+    ctx.fillStyle = '#0b1018'; ctx.fillRect(-13, -49, 28, crouching ? 25 : 38);
+    ctx.fillStyle = '#bca58f'; ctx.fillRect(-10, -66, 22, 19);
+    ctx.fillStyle = '#202735'; ctx.fillRect(-13, -71, 28, 11);
+    ctx.fillStyle = COLORS.feedback; ctx.fillRect(-9, -37, 5, 17);
+    ctx.fillStyle = '#080b12'; ctx.fillRect(-11, -11, 8, 20); ctx.fillRect(7, -11, 8, 20);
+    ctx.fillStyle = COLORS.text; ctx.fillRect(7, -59, 3, 3); ctx.restore();
+  }
+
+  private drawMonster(x: number, y: number, chasing: boolean, time: number): void {
+    const ctx = this.context;
+    const reach = chasing ? Math.sin(time / 55) * 8 : 0;
+    ctx.save(); ctx.translate(Math.round(x), y); ctx.fillStyle = chasing ? '#18090e' : '#080c13';
+    ctx.beginPath(); ctx.ellipse(0, -25, 31, 62, -.08, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-1, -82, 27, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = chasing ? '#210a11' : '#0b1119'; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(-25, -38); ctx.lineTo(-49 - reach, 3); ctx.moveTo(25, -38); ctx.lineTo(49 + reach, 3); ctx.stroke();
+    ctx.fillStyle = COLORS.danger; ctx.fillRect(-16, -87, 5, 4); ctx.fillRect(9, -86, 5, 4); ctx.restore();
+  }
+
+  private drawNoise(x: number, y: number, time: number): void {
+    const ctx = this.context; const pulse = 18 + ((time / 12) % 34);
+    ctx.strokeStyle = 'rgba(251,113,133,.65)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, pulse, Math.PI, Math.PI * 2); ctx.stroke();
   }
 
   private drawHud(time: number): void {
-    const ctx = this.context;
-    ctx.fillStyle = 'rgba(3,7,18,.86)';
-    ctx.fillRect(0, 0, 960, 72);
-    ctx.textAlign = 'left';
-    ctx.font = '700 18px Pretendard, system-ui';
-    ctx.fillStyle = COLORS.text;
-    ctx.fillText(`♥ ${'●'.repeat(this.hearts)}${'○'.repeat(3 - this.hearts)}`, 24, 29);
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '13px Pretendard, system-ui';
-    ctx.fillText(`SCORE ${this.score.toString().padStart(6, '0')}  ·  COMBO ${this.combo}`, 24, 52);
+    const ctx = this.context; const cue = cueAt(time); const remaining = Math.max(0, Math.ceil((STAGE_DURATION_MS - time) / 1_000));
+    ctx.fillStyle = 'rgba(3,7,18,.91)'; ctx.fillRect(0, 0, 960, 72);
+    ctx.textAlign = 'left'; ctx.fillStyle = COLORS.text; ctx.font = '700 18px Pretendard, system-ui';
+    ctx.fillText(`♥ ${'●'.repeat(this.state.hearts)}${'○'.repeat(3 - this.state.hearts)}`, 24, 28);
+    ctx.fillStyle = this.state.monsterMode === 'chase' ? COLORS.danger : COLORS.muted; ctx.font = '12px Pretendard, system-ui';
+    ctx.fillText(`괴물 · ${this.modeLabel()}`, 24, 51);
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = '700 17px monospace'; ctx.fillText(`00:${String(remaining).padStart(2, '0')}`, 480, 28);
+    ctx.fillStyle = COLORS.muted; ctx.font = '12px Pretendard, system-ui'; ctx.fillText(`${cue.label} · BPM ${BPM}`, 480, 51);
+    ctx.textAlign = 'right'; ctx.fillStyle = cue.danger ? COLORS.danger : COLORS.feedback; ctx.font = '700 12px Pretendard, system-ui'; ctx.fillText(cue.message, 936, 28);
+    ctx.fillStyle = COLORS.border; ctx.fillRect(756, 43, 180, 7); ctx.fillStyle = this.state.tension > 68 ? COLORS.danger : COLORS.feedback; ctx.fillRect(756, 43, 180 * this.state.tension / 100, 7);
+    ctx.fillStyle = COLORS.muted; ctx.font = '10px Pretendard, system-ui'; ctx.fillText('심박', 750, 51);
 
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 17px monospace';
-    ctx.fillText(this.storyClock(time), 480, 29);
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '13px Pretendard, system-ui';
-    ctx.fillText(`BPM ${BPM} · ${Math.min(100, Math.floor((time / DURATION_MS) * 100))}%`, 480, 52);
-
-    ctx.textAlign = 'right';
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 14px Pretendard, system-ui';
-    ctx.fillText('추격 거리', 936, 25);
-    ctx.fillStyle = COLORS.border;
-    ctx.fillRect(756, 37, 180, 10);
-    ctx.fillStyle = this.threat >= 70 ? COLORS.danger : COLORS.feedback;
-    ctx.fillRect(756, 37, 180 * Math.min(1, this.threat / 100), 10);
-  }
-
-  private drawNarrative(time: number): void {
-    const cue = cueAt(time);
-    const ctx = this.context;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(3,7,18,.76)';
-    ctx.fillRect(24, 372, 414, 70);
-    ctx.strokeStyle = 'rgba(199,210,254,.18)';
-    ctx.strokeRect(24, 372, 414, 70);
-    ctx.fillStyle = cue.threatLevel >= 4 ? COLORS.danger : COLORS.feedback;
-    ctx.font = '700 13px Pretendard, system-ui';
-    ctx.fillText(`● REC  ${cue.location}  /  ${cue.chapter}`, 38, 394);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '14px Pretendard, system-ui';
-    ctx.fillText(cue.message, 38, 421);
+    if (time < this.state.feedbackUntilMs) {
+      ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(3,7,18,.82)'; ctx.fillRect(260, 84, 440, 36);
+      ctx.strokeStyle = this.state.feedback.includes('발각') || this.state.feedback.includes('붙잡') ? COLORS.danger : COLORS.border; ctx.strokeRect(260, 84, 440, 36);
+      ctx.fillStyle = this.state.feedback.includes('발각') ? COLORS.danger : COLORS.text; ctx.font = '700 13px Pretendard, system-ui'; ctx.fillText(this.state.feedback, 480, 107);
+    }
   }
 
   private drawBeatRail(time: number, phase: RhythmPhase): void {
-    const ctx = this.context;
-    const absoluteBeat = Math.max(0, Math.floor(time / BEAT_MS) - LEAD_IN_BEATS);
-    const barStart = Math.floor(absoluteBeat / 4) * 4;
-    const active = absoluteBeat % 4;
-    const pulse = 1 - Math.min(1, Math.abs((time % BEAT_MS) - 0) / BEAT_MS);
-
-    ctx.fillStyle = 'rgba(3,7,18,.9)';
-    ctx.fillRect(344, 458, 372, 66);
-    ctx.strokeStyle = COLORS.border;
-    ctx.strokeRect(344, 458, 372, 66);
+    const ctx = this.context; const beat = beatAt(time); const active = beat.beatInBar - 1; const pulse = 1 - ((time % BEAT_MS) / BEAT_MS);
+    ctx.fillStyle = 'rgba(3,7,18,.92)'; ctx.fillRect(332, 462, 420, 62); ctx.strokeStyle = COLORS.border; ctx.strokeRect(332, 462, 420, 62);
     ctx.textAlign = 'center';
     for (let index = 0; index < 4; index += 1) {
-      const note = CHART[barStart + index];
-      const x = 404 + index * 82;
-      ctx.strokeStyle = index < 2 ? '#d9d692' : COLORS.feedback;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x - 41, 496);
-      ctx.lineTo(x + 41, 496);
-      ctx.stroke();
-      if (note?.hidden) {
-        ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = COLORS.danger;
-        ctx.beginPath();
-        ctx.arc(x, 496, 11, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = COLORS.danger;
-        ctx.font = '12px Pretendard, system-ui';
-        ctx.fillText('삭제', x, 478);
+      const noteId = beat.id - active + index; const hidden = noteId >= 0 && CHART[noteId]?.hidden; const x = 390 + index * 72;
+      ctx.strokeStyle = index < 2 ? '#d6d39a' : COLORS.feedback; ctx.beginPath(); ctx.moveTo(x - 35, 499); ctx.lineTo(x + 35, 499); ctx.stroke();
+      if (hidden) {
+        ctx.fillStyle = COLORS.danger; ctx.font = '700 18px monospace'; ctx.fillText('·', x, 504);
       } else {
-        const radius = index === active ? 9 + pulse * 3 : 6;
-        ctx.fillStyle = index === active ? (phase === 'light' ? '#d9d692' : COLORS.feedback) : COLORS.muted;
-        ctx.beginPath();
-        ctx.arc(x, 496, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = COLORS.text;
-        ctx.font = '700 13px monospace';
-        ctx.fillText(String(index + 1), x, 480);
+        ctx.fillStyle = index === active ? (phase === 'light' ? '#d6d39a' : COLORS.feedback) : COLORS.border;
+        ctx.beginPath(); ctx.arc(x, 499, index === active ? 8 + pulse * 4 : 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = COLORS.text; ctx.font = '700 11px monospace'; ctx.fillText(String(index + 1), x, 482);
       }
     }
-    ctx.fillStyle = phase === 'light' ? '#d9d692' : COLORS.feedback;
-    ctx.font = '700 13px Pretendard, system-ui';
-    ctx.fillText(phase === 'light' ? '빛 · 숨는다' : '어둠 · 이동한다', 530, 518);
-
-    if (this.lastJudgement && performance.now() < this.judgementUntil) {
-      ctx.fillStyle = this.lastJudgement === 'perfect' ? COLORS.text : this.lastJudgement === 'good' ? COLORS.feedback : COLORS.danger;
-      ctx.font = '700 18px Pretendard, system-ui';
-      ctx.fillText(this.judgementLabel(), 530, 452);
-    }
+    ctx.fillStyle = phase === 'light' ? '#d6d39a' : COLORS.feedback; ctx.font = '700 12px Pretendard, system-ui';
+    ctx.fillText(phase === 'light' ? '빛 · 멈춰' : '어둠 · 이동', 680, 504);
   }
 
-  private drawTouchControls(phase: RhythmPhase): void {
-    this.drawControlButton(24, 465, 142, 52, 'SPACE', '숨기', phase === 'light');
-    this.drawControlButton(178, 465, 142, 52, 'WASD / 방향키', '이동', phase === 'dark');
+  private drawTouchControls(time: number): void {
+    this.drawControl(18, 'A', '왼쪽'); this.drawControl(112, 'D', '오른쪽'); this.drawControl(206, 'S', '숨기');
+    this.drawControl(764, 'SHIFT', time >= 50_000 ? '달리기' : '추격 때'); this.drawControl(858, 'W', '문 열기');
   }
 
-  private drawControlButton(x: number, y: number, width: number, height: number, key: string, label: string, active: boolean): void {
-    const ctx = this.context;
-    ctx.fillStyle = active ? COLORS.primary : 'rgba(17,24,39,.9)';
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = active ? COLORS.feedback : COLORS.border;
-    ctx.strokeRect(x, y, width, height);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '10px monospace';
-    ctx.fillText(key, x + width / 2, y + 17);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 15px Pretendard, system-ui';
-    ctx.fillText(label, x + width / 2, y + 39);
+  private drawControl(x: number, key: string, label: string): void {
+    const ctx = this.context; ctx.fillStyle = 'rgba(17,24,39,.92)'; ctx.fillRect(x, 468, 84, 48); ctx.strokeStyle = COLORS.border; ctx.strokeRect(x, 468, 84, 48);
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.muted; ctx.font = '700 9px monospace'; ctx.fillText(key, x + 42, 484); ctx.fillStyle = COLORS.text; ctx.font = '11px Pretendard, system-ui'; ctx.fillText(label, x + 42, 504);
   }
 
   private drawTitle(): void {
-    const ctx = this.context;
-    ctx.fillStyle = 'rgba(3,7,18,.74)';
-    ctx.fillRect(0, 0, 960, 540);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '700 14px Pretendard, system-ui';
-    ctx.fillText('CHAPTER 01 · 4 BEAT RHYTHM HORROR', 480, 118);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 52px Pretendard, system-ui';
-    ctx.fillText('새벽 3시 33분', 480, 183);
-    ctx.fillStyle = COLORS.danger;
-    ctx.font = '700 19px Pretendard, system-ui';
-    ctx.fillText('리듬을 맞춰야, 살아남는다.', 480, 220);
-
-    ctx.fillStyle = 'rgba(17,24,39,.94)';
-    ctx.fillRect(212, 250, 536, 118);
-    ctx.strokeStyle = COLORS.border;
-    ctx.strokeRect(212, 250, 536, 118);
-    ctx.textAlign = 'left';
-    ctx.font = '700 16px Pretendard, system-ui';
-    ctx.fillStyle = '#d9d692';
-    ctx.fillText('1 · 2  빛', 246, 286);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '14px Pretendard, system-ui';
-    ctx.fillText('SPACE로 숨는다. 움직이면 들킨다.', 350, 286);
-    ctx.font = '700 16px Pretendard, system-ui';
-    ctx.fillStyle = COLORS.feedback;
-    ctx.fillText('3 · 4  어둠', 246, 326);
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '14px Pretendard, system-ui';
-    ctx.fillText('WASD/방향키로 다음 안전지점까지 이동한다.', 350, 326);
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '13px Pretendard, system-ui';
-    ctx.fillText('중반부터 박자가 사라집니다. 음악의 간격을 기억하세요.', 246, 353);
-
-    ctx.fillStyle = COLORS.primary;
-    ctx.fillRect(305, 402, 350, 56);
-    ctx.strokeStyle = COLORS.feedback;
-    ctx.strokeRect(305, 402, 350, 56);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 17px Pretendard, system-ui';
-    ctx.fillText('ENTER 또는 클릭하여 순찰 시작', 480, 437);
+    const ctx = this.context; ctx.fillStyle = 'rgba(3,7,18,.78)'; ctx.fillRect(0, 0, 960, 540); ctx.textAlign = 'center';
+    ctx.fillStyle = COLORS.feedback; ctx.font = '700 13px Pretendard, system-ui'; ctx.fillText('2D RHYTHM · STEALTH · HORROR', 480, 92);
+    ctx.fillStyle = COLORS.text; ctx.font = '700 54px Pretendard, system-ui'; ctx.fillText('4번째 박자', 480, 157);
+    ctx.fillStyle = COLORS.danger; ctx.font = '700 18px Pretendard, system-ui'; ctx.fillText('리듬을 맞춰야, 살아남는다.', 480, 192);
+    ctx.fillStyle = 'rgba(17,24,39,.96)'; ctx.fillRect(190, 226, 580, 154); ctx.strokeStyle = COLORS.border; ctx.strokeRect(190, 226, 580, 154);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#d6d39a'; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('1 · 2  빛', 224, 260);
+    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('아무 키도 누르지 말고 멈춘다.', 326, 260);
+    ctx.fillStyle = COLORS.feedback; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('3 · 4  어둠', 224, 295);
+    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('A / D로 이동하고, 상자 앞에서는 S로 숨는다.', 326, 295);
+    ctx.fillStyle = COLORS.danger; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('목표', 224, 330);
+    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('60초 안에 오른쪽 비상문에서 W. 실수는 세 번까지.', 326, 330);
+    ctx.fillStyle = COLORS.muted; ctx.font = '12px Pretendard, system-ui'; ctx.fillText('중반부터 박자 신호가 하나씩 사라집니다.', 224, 361);
+    ctx.fillStyle = COLORS.primary; ctx.fillRect(306, 408, 348, 54); ctx.strokeStyle = COLORS.feedback; ctx.strokeRect(306, 408, 348, 54);
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = '700 16px Pretendard, system-ui'; ctx.fillText('ENTER 또는 클릭하여 탈출 시작', 480, 441);
   }
 
   private drawResult(): void {
-    const title = this.resultSurvived ? '새벽을 빠져나왔다' : '신호가 끊겼다';
-    const story = this.resultSurvived
-      ? '뒤돌아본 CCTV 속에는 경비복을 입은 남자가 서 있었다.'
-      : '경비실의 모든 불이 꺼지고, 화면은 정확히 7분간 멈췄다.';
-    this.drawOverlay(title, `${story}\nSCORE ${this.score} · MAX COMBO ${this.maxCombo} · 이동 ${this.progress}\nEnter 또는 클릭하여 다시 시작`);
+    const escaped = this.state.result === 'escaped';
+    this.drawOverlay(escaped ? '비상문이 열렸다' : '박자를 놓쳤다', escaped
+      ? '메트로놈은 멈췄지만, 네 번째 박자는 몸에 남아 있었다.\nENTER 또는 클릭 · 처음부터 다시'
+      : `최근 안전 구역 ${Math.round(this.checkpointForRetry)}m에서 다시 시작합니다.\nENTER 또는 클릭 · 체크포인트 재시작`);
   }
 
   private drawOverlay(title: string, subtitle: string): void {
-    const ctx = this.context;
-    ctx.fillStyle = 'rgba(3,7,18,.93)';
-    ctx.fillRect(150, 136, 660, 274);
-    ctx.strokeStyle = this.resultSurvived ? COLORS.feedback : COLORS.danger;
-    ctx.strokeRect(150, 136, 660, 274);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '700 34px Pretendard, system-ui';
-    ctx.fillText(title, 480, 202);
-    ctx.font = '15px Pretendard, system-ui';
-    ctx.fillStyle = COLORS.muted;
-    subtitle.split('\n').forEach((line, index) => ctx.fillText(line, 480, 258 + index * 38));
+    const ctx = this.context; ctx.fillStyle = 'rgba(3,7,18,.94)'; ctx.fillRect(154, 146, 652, 242);
+    ctx.strokeStyle = this.state.result === 'escaped' ? COLORS.feedback : COLORS.danger; ctx.strokeRect(154, 146, 652, 242);
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = '700 32px Pretendard, system-ui'; ctx.fillText(title, 480, 209);
+    ctx.fillStyle = COLORS.muted; ctx.font = '14px Pretendard, system-ui'; subtitle.split('\n').forEach((line, index) => ctx.fillText(line, 480, 265 + index * 40));
   }
 
-  private judgementLabel(): string {
-    if (this.lastJudgement === 'perfect') return this.lastAction === 'move' ? 'PERFECT · 이동' : 'PERFECT · 숨기';
-    if (this.lastJudgement === 'good') return 'GOOD';
-    if (this.lastJudgement === 'wrong') return '위험! 반대 행동';
-    return 'MISS · 괴물이 가까워진다';
-  }
-
-  private storyClock(time: number): string {
-    const elapsedSeconds = Math.min(60, Math.floor(time / 1000));
-    const minute = elapsedSeconds >= 60 ? 33 : 32;
-    const second = elapsedSeconds >= 60 ? 0 : elapsedSeconds;
-    return `03:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+  private modeLabel(): string {
+    return { idle: '정지', patrol: '순찰', investigate: '소음 조사', chase: '추격' }[this.state.monsterMode];
   }
 }
