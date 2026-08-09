@@ -1,5 +1,7 @@
 import backgroundMusicUrl from '../../../assets/어둠의 추격.mp3';
 import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
+import yeongsuGuardUrl from '../assets/yeongsu-guard-sprite.png';
+import cctvMonsterUrl from '../assets/cctv-monster-sprite.png';
 import { CHART, cueAt } from '../shared/content';
 import {
   BEAT_MS,
@@ -31,6 +33,8 @@ const EMPTY_INPUT: PlayerInput = { left: false, right: false, crouch: false, run
 export class RhythmHorrorGame {
   private readonly context: CanvasRenderingContext2D;
   private readonly backgroundImage: HTMLImageElement | null;
+  private readonly playerImage: HTMLImageElement | null;
+  private readonly monsterImage: HTMLImageElement | null;
   private screen: Screen = 'title';
   private state: StageState = createStageState();
   private inputState: PlayerInput = { ...EMPTY_INPUT };
@@ -49,6 +53,10 @@ export class RhythmHorrorGame {
     this.context = context;
     this.backgroundImage = typeof Image === 'undefined' ? null : new Image();
     if (this.backgroundImage) this.backgroundImage.src = basementBackgroundUrl;
+    this.playerImage = typeof Image === 'undefined' ? null : new Image();
+    if (this.playerImage) this.playerImage.src = yeongsuGuardUrl;
+    this.monsterImage = typeof Image === 'undefined' ? null : new Image();
+    if (this.monsterImage) this.monsterImage.src = cctvMonsterUrl;
   }
 
   mount(): void {
@@ -318,24 +326,49 @@ export class RhythmHorrorGame {
   private drawPlayer(x: number, y: number, moving: boolean, crouching: boolean): void {
     const ctx = this.context;
     const bob = moving ? Math.sin(this.music.timeMs() / 65) * 3 : 0;
-    ctx.save(); ctx.translate(Math.round(x), Math.round(y + bob + (crouching ? 19 : 0)));
-    ctx.fillStyle = '#0b1018'; ctx.fillRect(-13, -49, 28, crouching ? 25 : 38);
-    ctx.fillStyle = '#bca58f'; ctx.fillRect(-10, -66, 22, 19);
-    ctx.fillStyle = '#202735'; ctx.fillRect(-13, -71, 28, 11);
-    ctx.fillStyle = COLORS.feedback; ctx.fillRect(-9, -37, 5, 17);
-    ctx.fillStyle = '#080b12'; ctx.fillRect(-11, -11, 8, 20); ctx.fillRect(7, -11, 8, 20);
-    ctx.fillStyle = COLORS.text; ctx.fillRect(7, -59, 3, 3); ctx.restore();
+    ctx.save();
+    ctx.translate(Math.round(x), Math.round(y + bob + (crouching ? 19 : 0)));
+    if (this.playerImage && this.playerImage.complete && this.playerImage.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
+      const renderHeight = crouching ? 72 : 102;
+      const aspectRatio = this.playerImage.naturalWidth / this.playerImage.naturalHeight;
+      const renderWidth = renderHeight * aspectRatio;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.playerImage, -renderWidth / 2, -renderHeight + 10, renderWidth, renderHeight);
+    } else {
+      ctx.fillStyle = '#0b1018'; ctx.fillRect(-13, -49, 28, crouching ? 25 : 38);
+      ctx.fillStyle = '#bca58f'; ctx.fillRect(-10, -66, 22, 19);
+      ctx.fillStyle = '#202735'; ctx.fillRect(-13, -71, 28, 11);
+      ctx.fillStyle = COLORS.feedback; ctx.fillRect(-9, -37, 5, 17);
+      ctx.fillStyle = '#080b12'; ctx.fillRect(-11, -11, 8, 20); ctx.fillRect(7, -11, 8, 20);
+      ctx.fillStyle = COLORS.text; ctx.fillRect(7, -59, 3, 3);
+    }
+    ctx.restore();
   }
 
   private drawMonster(x: number, y: number, chasing: boolean, time: number): void {
     const ctx = this.context;
     const reach = chasing ? Math.sin(time / 55) * 8 : 0;
-    ctx.save(); ctx.translate(Math.round(x), y); ctx.fillStyle = chasing ? '#18090e' : '#080c13';
-    ctx.beginPath(); ctx.ellipse(0, -25, 31, 62, -.08, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-1, -82, 27, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = chasing ? '#210a11' : '#0b1119'; ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(-25, -38); ctx.lineTo(-49 - reach, 3); ctx.moveTo(25, -38); ctx.lineTo(49 + reach, 3); ctx.stroke();
-    ctx.fillStyle = COLORS.danger; ctx.fillRect(-16, -87, 5, 4); ctx.fillRect(9, -86, 5, 4); ctx.restore();
+    ctx.save();
+    ctx.translate(Math.round(x), y);
+    if (this.monsterImage && this.monsterImage.complete && this.monsterImage.naturalWidth > 0 && typeof ctx.drawImage === 'function') {
+      const renderHeight = chasing ? 160 : 145;
+      const aspectRatio = this.monsterImage.naturalWidth / this.monsterImage.naturalHeight;
+      const renderWidth = renderHeight * aspectRatio;
+      ctx.imageSmoothingEnabled = true;
+      if (chasing) {
+        ctx.shadowColor = COLORS.danger;
+        ctx.shadowBlur = 15;
+      }
+      ctx.drawImage(this.monsterImage, -renderWidth / 2 + reach, -renderHeight + 30, renderWidth, renderHeight);
+    } else {
+      ctx.fillStyle = chasing ? '#18090e' : '#080c13';
+      ctx.beginPath(); ctx.ellipse(0, -25, 31, 62, -.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-1, -82, 27, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = chasing ? '#210a11' : '#0b1119'; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(-25, -38); ctx.lineTo(-49 - reach, 3); ctx.moveTo(25, -38); ctx.lineTo(49 + reach, 3); ctx.stroke();
+      ctx.fillStyle = COLORS.danger; ctx.fillRect(-16, -87, 5, 4); ctx.fillRect(9, -86, 5, 4);
+    }
+    ctx.restore();
   }
 
   private drawNoise(x: number, y: number, time: number): void {
