@@ -1,7 +1,9 @@
 :root {
   color-scheme: dark;
   font-family: Inter, Pretendard, system-ui, sans-serif;
+  color: #f9fafb;
   background: #030712;
+  font-synthesis: none;
 }
 
 * {
@@ -12,11 +14,18 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background:
+    radial-gradient(circle at 50% 12%, rgb(49 46 129 / 18%), transparent 34rem),
+    #030712;
 }
 
 button,
 canvas {
   -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
 }
 
 #app {
@@ -26,22 +35,106 @@ canvas {
   padding: 24px;
 }
 
+.game-shell {
+  width: min(100%, 960px);
+}
+
 canvas {
   display: block;
   width: min(100%, 960px);
   height: auto;
   border: 1px solid #374151;
   border-radius: 12px;
+  outline: none;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  image-rendering: pixelated;
+  touch-action: manipulation;
 }
 
-.game-shell {
-  width: min(100%, 960px);
+canvas:focus-visible {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgb(129 140 248 / 35%), 0 24px 80px rgb(0 0 0 / 45%);
 }
 
 .controls {
-  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.controls button {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  color: #f9fafb;
+  background: #111827;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  border-color: #818cf8;
+  background: #312e81;
+}
+
+.controls button:focus-visible {
+  outline: 3px solid rgb(129 140 248 / 55%);
+  outline-offset: 2px;
+}
+
+.controls button:active {
+  transform: translateY(1px);
+}
+
+kbd {
+  min-width: 54px;
+  padding: 4px 8px;
+  border: 1px solid #374151;
+  border-radius: 4px;
   color: #c7d2fe;
-  font-size: 14px;
+  background: #030712;
+  font: 12px/1.2 monospace;
+}
+
+.audio-note {
+  margin: 8px 0 0;
+  color: #c7d2fe;
+  font-size: 13px;
   text-align: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 600px) {
+  #app {
+    padding: 8px;
+  }
+
+  .controls {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .controls button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls button:active {
+    transform: none;
+  }
 }

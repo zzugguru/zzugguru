@@ -1,33 +1,47 @@
 import { describe, expect, it } from 'vitest';
-import { GOOD_WINDOW_MS, PERFECT_WINDOW_MS, judgeLane, overdueNotes, scoreFor, type Note } from './gameLogic';
+import {
+  BEAT_MS,
+  INPUT_WINDOW_MS,
+  buildBeatChart,
+  isHiddenBeat,
+  judgeAction,
+  overdueNotes,
+  phaseForBeat,
+  scoreFor,
+} from './gameLogic';
 
-const notes: Note[] = [
-  { id: 1, timeMs: 1000, lane: 0 },
-  { id: 2, timeMs: 1400, lane: 1 },
-];
+describe('4박자 스텔스 리듬 규칙', () => {
+  const notes = buildBeatChart();
 
-describe('rhythm game judgement', () => {
-  it('판정 구간 안의 가장 가까운 노트를 판정한다', () => {
-    expect(judgeLane(notes, new Set(), 0, 1000).judgement).toBe('perfect');
-    expect(judgeLane(notes, new Set(), 1, 1400 + PERFECT_WINDOW_MS + 1).judgement).toBe('good');
+  it('120 BPM의 4박자에서 1·2는 빛, 3·4는 어둠이다', () => {
+    expect(BEAT_MS).toBe(500);
+    expect([1, 2, 3, 4].map(phaseForBeat)).toEqual(['light', 'light', 'dark', 'dark']);
+    expect(notes.slice(0, 4).map((note) => note.expectedAction)).toEqual(['hide', 'hide', 'move', 'move']);
   });
 
-  it('잘못된 레인과 판정 구간 밖 입력은 miss다', () => {
-    expect(judgeLane(notes, new Set(), 3, 1000).note).toBeNull();
-    expect(judgeLane(notes, new Set(), 0, 1000 + GOOD_WINDOW_MS + 1).judgement).toBe('miss');
+  it('박자 창 안에서 올바른 행동과 반대 행동을 구분한다', () => {
+    const first = notes[0];
+    expect(judgeAction(notes, new Set(), 'hide', first.timeMs).judgement).toBe('perfect');
+    expect(judgeAction(notes, new Set(), 'hide', first.timeMs + 100).judgement).toBe('good');
+    expect(judgeAction(notes, new Set(), 'move', first.timeMs).judgement).toBe('wrong');
   });
 
-  it('이미 처리한 노트를 다시 판정하지 않는다', () => {
-    expect(judgeLane(notes, new Set([1]), 0, 1000).note).toBeNull();
+  it('판정 창 밖 입력과 지나간 미입력을 miss로 처리한다', () => {
+    const first = notes[0];
+    expect(judgeAction(notes, new Set(), 'hide', first.timeMs - INPUT_WINDOW_MS - 1).note).toBeNull();
+    expect(overdueNotes(notes.slice(0, 2), new Set([0]), notes[1].timeMs + INPUT_WINDOW_MS + 1).map((note) => note.id)).toEqual([1]);
   });
 
-  it('판정 시간이 지난 미처리 노트만 반환한다', () => {
-    expect(overdueNotes(notes, new Set([1]), 2000).map((note) => note.id)).toEqual([2]);
+  it('중반 이후 표시 삭제가 시작되고 마지막 구간에서 빈도가 높아진다', () => {
+    expect(isHiddenBeat(47)).toBe(false);
+    expect(isHiddenBeat(53)).toBe(true);
+    expect(isHiddenBeat(89)).toBe(true);
+    expect(isHiddenBeat(93)).toBe(true);
   });
 
-  it('콤보 보너스에 상한을 적용한다', () => {
-    expect(scoreFor('perfect', 2)).toBe(1020);
-    expect(scoreFor('perfect', 999)).toBe(1500);
-    expect(scoreFor('miss', 20)).toBe(0);
+  it('콤보 점수에 상한을 적용한다', () => {
+    expect(scoreFor('perfect', 2)).toBe(924);
+    expect(scoreFor('perfect', 999)).toBe(1380);
+    expect(scoreFor('wrong', 20)).toBe(0);
   });
 });

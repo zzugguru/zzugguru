@@ -1,39 +1,25 @@
-import type { Note } from './gameLogic';
+import { BEAT_MS, buildBeatChart } from './gameLogic';
 
-export const DURATION_MS = 112_000;
-export const LEAD_IN_MS = 2_500;
+export const CHART = buildBeatChart();
+export const DURATION_MS = (CHART.length + 4) * BEAT_MS;
 
 export interface StoryCue {
   timeMs: number;
   chapter: string;
   message: string;
-  camera: string;
-  threat: number;
+  location: string;
+  threatLevel: number;
 }
 
 export const STORY_CUES: StoryCue[] = [
-  { timeMs: 0, chapter: '야간 근무', message: '화면을 지켜보는 것. 그것으로 충분했다.', camera: '정문', threat: 0 },
-  { timeMs: 18_000, chapter: '첫째 날', message: '오전 3시 33분. 17번 기둥 옆에 누군가 서 있다.', camera: '지하주차장', threat: 1 },
-  { timeMs: 38_000, chapter: '셋째 날', message: '여자는 걸어온 적이 없었다. 그런데 더 가까워졌다.', camera: '1층 로비', threat: 2 },
-  { timeMs: 58_000, chapter: '다섯째 날', message: '박 씨에게는 보이지 않는다.', camera: '경비실 앞', threat: 3 },
-  { timeMs: 78_000, chapter: '여섯째 날', message: '3:32. 오늘은 오지 않는 모양이다.', camera: 'CCTV 12', threat: 4 },
-  { timeMs: 91_000, chapter: '오전 3시 33분', message: '의자 바로 뒤에 여자가 서 있었다.', camera: '경비실 내부', threat: 5 },
-  { timeMs: 104_000, chapter: '치직', message: '그 얼굴은 아내가 아니었다.', camera: '신호 없음', threat: 6 },
+  { timeMs: 0, chapter: '야간 근무', message: '화면을 지켜보는 것. 그것으로 충분했다.', location: '경비실', threatLevel: 0 },
+  { timeMs: 10_000, chapter: '오전 3시 33분', message: '지하주차장 17번 기둥 옆에 누군가 서 있다.', location: '지하 복도', threatLevel: 1 },
+  { timeMs: 22_000, chapter: '조금씩 가까이', message: '여자는 걸어온 적이 없다. 그런데 매일 더 가까워졌다.', location: '1층 로비', threatLevel: 2 },
+  { timeMs: 28_000, chapter: '가족사진', message: '영수는 가족사진을 품에 안았다. 아내의 미소와 닮아 있었다.', location: '경비실 CCTV', threatLevel: 2 },
+  { timeMs: 34_000, chapter: '삭제된 박자', message: '소리가 비어도 발걸음의 간격을 기억해야 한다.', location: '기계실', threatLevel: 3 },
+  { timeMs: 46_000, chapter: '의자 바로 뒤', message: '화면 속 영수의 뒤에 여자가 서 있었다.', location: '경비실 앞', threatLevel: 4 },
+  { timeMs: 56_000, chapter: '그 얼굴은', message: '아내가 아니었다. 어둠이 복도 끝에서 달려온다.', location: 'B1 주차장', threatLevel: 5 },
 ];
-
-function buildChart(): Note[] {
-  const notes: Note[] = [];
-  let id = 0;
-  for (let timeMs = LEAD_IN_MS; timeMs < DURATION_MS - 1_500; timeMs += timeMs < 58_000 ? 750 : 600) {
-    const beat = id;
-    notes.push({ id: id++, timeMs, lane: (beat * 3 + Math.floor(beat / 4)) % 4 });
-    if (timeMs > 38_000 && beat % 4 === 2) notes.push({ id: id++, timeMs, lane: (beat + 2) % 4 });
-    if (timeMs > 91_000 && beat % 3 === 0) notes.push({ id: id++, timeMs: timeMs + 300, lane: (beat + 1) % 4 });
-  }
-  return notes.sort((a, b) => a.timeMs - b.timeMs || a.lane - b.lane);
-}
-
-export const CHART = buildChart();
 
 export function cueAt(timeMs: number): StoryCue {
   let current = STORY_CUES[0];
