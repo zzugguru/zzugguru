@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BEAT_MS,
   EXIT_X,
+  LIGHT_INPUT_GRACE_MS,
   NOISE_OBSTACLES,
   STAGE_DURATION_MS,
   beatAt,
@@ -23,14 +24,26 @@ describe('4번째 박자 횡스크롤 스텔스 규칙', () => {
     expect(buildBeatChart().slice(0, 4).map((note) => note.phase)).toEqual(['light', 'light', 'dark', 'dark']);
   });
 
-  it('빛에서는 이동하지 않으면 안전하고 움직이기 시작하면 체력과 긴장을 잃는다', () => {
+  it('빛 전환 직후에는 입력 유예를 주고 유예가 끝난 뒤 움직이면 체력과 긴장을 잃는다', () => {
     const state = createStageState();
-    const safe = stepStage(state, still, 2_000, 100);
-    const exposed = stepStage(state, right, 2_000, 100);
+    const safe = stepStage(state, right, 2_000 + LIGHT_INPUT_GRACE_MS - 1, 100);
+    const exposed = stepStage(state, right, 2_000 + LIGHT_INPUT_GRACE_MS + 1, 100);
     expect(safe.hearts).toBe(3);
+    expect(safe.playerX).toBe(state.playerX);
     expect(exposed.hearts).toBe(2);
     expect(exposed.monsterMode).toBe('investigate');
     expect(exposed.playerX).toBe(state.playerX);
+  });
+
+  it('어둠부터 방향키를 계속 눌러도 빛 유예가 끝나면 한 번만 실수 판정한다', () => {
+    let state = createStageState();
+    state = stepStage(state, right, 3_992, 16);
+    state = stepStage(state, right, 4_000, 16);
+    expect(state.hearts).toBe(3);
+    state = stepStage(state, right, 4_224, 16);
+    expect(state.hearts).toBe(2);
+    state = stepStage(state, right, 4_400, 16);
+    expect(state.hearts).toBe(2);
   });
 
   it('어둠에서는 좌우 이동이 실제 월드 위치를 바꾼다', () => {
@@ -81,9 +94,36 @@ describe('4번째 박자 횡스크롤 스텔스 규칙', () => {
     expect(next.monsterX).toBe(300);
   });
 
+  it('최종 추격 중에도 빛에서는 괴물이 완전히 정지한다', () => {
+    const chasing = {
+      ...createStageState(),
+      playerX: 700,
+      monsterX: 300,
+      checkpointX: 670,
+      monsterMode: 'chase' as const,
+    };
+    const next = stepStage(chasing, still, 50_000, 500);
+    expect(beatAt(50_000).phase).toBe('light');
+    expect(next.monsterMode).toBe('chase');
+    expect(next.monsterX).toBe(300);
+  });
+
+  it('어둠의 추격 속도는 달리는 플레이어보다 충분히 느리다', () => {
+    const chasing = {
+      ...createStageState(),
+      playerX: 700,
+      monsterX: 300,
+      checkpointX: 670,
+      monsterMode: 'chase' as const,
+    };
+    const next = stepStage(chasing, { ...right, run: true }, 3_000, 1_000);
+    expect(next.playerX).toBe(925);
+    expect(next.monsterX).toBe(390);
+  });
+
   it('세 번째 빛 구간 실수는 즉시 사망으로 처리한다', () => {
     const critical = { ...createStageState(), hearts: 1 };
-    const next = stepStage(critical, right, 2_000, 16);
+    const next = stepStage(critical, right, 2_000 + LIGHT_INPUT_GRACE_MS + 1, 16);
     expect(next.hearts).toBe(0);
     expect(next.result).toBe('dead');
   });
@@ -108,7 +148,7 @@ describe('4번째 박자 횡스크롤 스텔스 규칙', () => {
       const crouch = NOISE_OBSTACLES.some((obstacle) => Math.abs(state.playerX - obstacle) < 34);
       state = stepStage(state, {
         ...still,
-        right: dark || time >= 50_000,
+        right: dark,
         crouch,
         run: time >= 50_000,
         interact: time >= 55_000 && state.playerX >= EXIT_X - 24,

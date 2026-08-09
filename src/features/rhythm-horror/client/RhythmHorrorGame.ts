@@ -1,8 +1,9 @@
-import backgroundMusicUrl from '../../../assets/어둠의 추격.mp3';
+import backgroundMusicUrl from '../assets/뒤를 쫓는 밤.mp3';
 import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
 import yeongsuGuardUrl from '../assets/yeongsu-guard-sprite.png';
 import cctvMonsterUrl from '../assets/cctv-monster-sprite.png';
 import { CHART, cueAt } from '../shared/content';
+import { tutorialTipFor } from '../shared/tutorial';
 import {
   BEAT_MS,
   BPM,
@@ -199,6 +200,7 @@ export class RhythmHorrorGame {
     ctx.restore();
     if (this.screen !== 'title') {
       this.drawHud(time);
+      if (this.screen === 'playing') this.drawTutorialTip(beat.phase, time);
       this.drawBeatRail(time, beat.phase);
       this.drawTouchControls(time);
     }
@@ -416,6 +418,27 @@ export class RhythmHorrorGame {
     ctx.fillText(phase === 'light' ? '빛 · 멈춰' : '어둠 · 이동', 680, 504);
   }
 
+  private drawTutorialTip(phase: RhythmPhase, time: number): void {
+    const ctx = this.context;
+    const tip = tutorialTipFor({
+      phase,
+      playerX: this.state.playerX,
+      monsterMode: this.state.monsterMode,
+      finalChase: time >= 50_000,
+    });
+    ctx.fillStyle = 'rgba(17,24,39,.88)';
+    ctx.fillRect(230, 128, 500, 58);
+    ctx.strokeStyle = tip.danger ? COLORS.danger : COLORS.feedback;
+    ctx.strokeRect(230, 128, 500, 58);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = tip.danger ? COLORS.danger : COLORS.feedback;
+    ctx.font = '700 13px Pretendard, system-ui';
+    ctx.fillText(tip.title, 248, 150);
+    ctx.fillStyle = COLORS.text;
+    ctx.font = '12px Pretendard, system-ui';
+    ctx.fillText(tip.detail, 248, 171);
+  }
+
   private drawTouchControls(time: number): void {
     this.drawControl(18, 'A', '왼쪽'); this.drawControl(112, 'D', '오른쪽'); this.drawControl(206, 'S', '숨기');
     this.drawControl(764, 'SHIFT', time >= 50_000 ? '달리기' : '추격 때'); this.drawControl(858, 'W', '문 열기');
@@ -431,16 +454,21 @@ export class RhythmHorrorGame {
     ctx.fillStyle = COLORS.feedback; ctx.font = '700 13px Pretendard, system-ui'; ctx.fillText('2D RHYTHM · STEALTH · HORROR', 480, 92);
     ctx.fillStyle = COLORS.text; ctx.font = '700 54px Pretendard, system-ui'; ctx.fillText('4번째 박자', 480, 157);
     ctx.fillStyle = COLORS.danger; ctx.font = '700 18px Pretendard, system-ui'; ctx.fillText('리듬을 맞춰야, 살아남는다.', 480, 192);
-    ctx.fillStyle = 'rgba(17,24,39,.96)'; ctx.fillRect(190, 226, 580, 154); ctx.strokeStyle = COLORS.border; ctx.strokeRect(190, 226, 580, 154);
-    ctx.textAlign = 'left'; ctx.fillStyle = '#d6d39a'; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('1 · 2  빛', 224, 260);
-    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('아무 키도 누르지 말고 멈춘다.', 326, 260);
-    ctx.fillStyle = COLORS.feedback; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('3 · 4  어둠', 224, 295);
-    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('A / D로 이동하고, 상자 앞에서는 S로 숨는다.', 326, 295);
-    ctx.fillStyle = COLORS.danger; ctx.font = '700 14px Pretendard, system-ui'; ctx.fillText('목표', 224, 330);
-    ctx.fillStyle = COLORS.text; ctx.font = '13px Pretendard, system-ui'; ctx.fillText('60초 안에 오른쪽 비상문에서 W. 실수는 세 번까지.', 326, 330);
-    ctx.fillStyle = COLORS.muted; ctx.font = '12px Pretendard, system-ui'; ctx.fillText('중반부터 박자 신호가 하나씩 사라집니다.', 224, 361);
-    ctx.fillStyle = COLORS.primary; ctx.fillRect(306, 408, 348, 54); ctx.strokeStyle = COLORS.feedback; ctx.strokeRect(306, 408, 348, 54);
-    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = '700 16px Pretendard, system-ui'; ctx.fillText('ENTER 또는 클릭하여 탈출 시작', 480, 441);
+    ctx.fillStyle = 'rgba(17,24,39,.96)'; ctx.fillRect(180, 210, 600, 204); ctx.strokeStyle = COLORS.border; ctx.strokeRect(180, 210, 600, 204);
+    ctx.textAlign = 'left'; ctx.font = '700 13px Pretendard, system-ui';
+    ctx.fillStyle = '#d6d39a'; ctx.fillText('1 · 2  빛', 208, 239);
+    ctx.fillStyle = COLORS.text; ctx.fillText('A/D를 놓고 멈춘다 · S는 필요 없다', 326, 239);
+    ctx.fillStyle = COLORS.feedback; ctx.fillText('3 · 4  어둠', 208, 270);
+    ctx.fillStyle = COLORS.text; ctx.fillText('A/D로 다음 엄폐물까지 이동한다', 326, 270);
+    ctx.fillStyle = COLORS.feedback; ctx.fillText('철제 장애물', 208, 301);
+    ctx.fillStyle = COLORS.text; ctx.fillText('S + A/D로 느리지만 조용히 통과한다', 326, 301);
+    ctx.fillStyle = COLORS.feedback; ctx.fillText('엄폐물 안', 208, 332);
+    ctx.fillStyle = COLORS.text; ctx.fillText('S로 몸을 낮추면 추격을 끊는다', 326, 332);
+    ctx.fillStyle = COLORS.danger; ctx.fillText('추격 중', 208, 363);
+    ctx.fillStyle = COLORS.text; ctx.fillText('어둠에 Shift + A/D로 달린다', 326, 363);
+    ctx.fillStyle = COLORS.muted; ctx.font = '12px Pretendard, system-ui'; ctx.fillText('목표 · 60초 안에 오른쪽 비상문에서 W · 실수는 세 번까지', 208, 395);
+    ctx.fillStyle = COLORS.primary; ctx.fillRect(306, 432, 348, 54); ctx.strokeStyle = COLORS.feedback; ctx.strokeRect(306, 432, 348, 54);
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = '700 16px Pretendard, system-ui'; ctx.fillText('ENTER 또는 클릭하여 탈출 시작', 480, 465);
   }
 
   private drawResult(): void {
