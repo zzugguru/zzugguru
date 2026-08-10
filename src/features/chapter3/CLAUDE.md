@@ -15,8 +15,9 @@
 5. 장치 작동 전 누나의 경고 컷씬 (`shared/wardenWarningLogic.ts`)
 6. 우주선 정전 · 기억세계 변모 연출 (`shared/blackoutLogic.ts`)
 7. 외계 가족 구출 서브시퀀스: 아버지·어머니·누나 (`shared/rescueLogic.ts`)
-8. Letting-go 퀴즈: 붙잡기/기록/놓아주기 선택 (`shared/lettingGoLogic.ts`)
-9. 에필로그: 복도 → 기록보관소 → 몽타주 → 고향별 → 일지 → 크레딧 → 포스트크레딧 (`shared/epilogueLogic.ts`)
+8. 마지막 저녁식탁 환상 인식 장면 (`shared/dinnerIllusionLogic.ts`)
+9. Letting-go 퀴즈: 붙잡기/기록/놓아주기 선택 (`shared/lettingGoLogic.ts`)
+10. 에필로그: 복도 → 기록보관소 → 몽타주 → 고향별 → 일지 → 크레딧 → 포스트크레딧 (`shared/epilogueLogic.ts`)
 
 ## 스토리 갭 백로그 (원작 `Story/Chapter03.md` 대비 미구현)
 
@@ -67,15 +68,17 @@
 
 이 챕터의 감정적 클라이맥스. 서사상 위치: 비트 3 직후. 현재 letting-go 퀴즈가 시작되는 지점을 대체하거나 그 앞에 삽입한다.
 
-- [ ] 4a. 식탁 장면 진입 — 평화로운 가짜 행복 연출(배경, 가족 배치, 초반 대사)
-- [ ] 4b. 위화감 대화 트리 — "신혼여행 때 방 번호 기억나?" 같은 질문에 아내가 답하지 못하는 순간들
-- [ ] 4c. 인식 순간 — "당신은 내가 행복하길 바라? / 그럼 왜 나를 여기 가두려고 해?" 질문과 음식이 검은 입자로 변하고 벽이 흔들리는 이펙트
-- [ ] 4d. 인식 완료 후 기존 letting-go 진입 지점으로 연결
+- [x] 4a. 식탁 장면 진입 — 평화로운 가짜 행복 연출(고정 컷씬으로 확정, 배경은 기존 기억의 방 재사용)
+- [x] 4b. 위화감 대화 — "밖에 있는 사람들은?", "내 외계 가족은?"에 아내가 얼버무리는 순간들
+- [x] 4c. 인식 순간 — "당신은 내가 행복하길 바라? / 그럼 왜 나를 여기 가두려고 해?" 질문과 음식이 검은 입자로 변하는 균열(danger 색조 오버레이)
+- [x] 4d. 인식 완료 후 기존 letting-go 진입 지점으로 연결
+
+완료: 2026-08-10. 고정 컷씬으로 확정(Developer Decisions 참고). 상세는 `chapter3-development-log.md`와 `CHAPTER3_BRIEF.md`의 `Completed Work Log` 참고.
 
 ## Chapter3 전용 add-only 지침
 
 - 루트 `CLAUDE.md`의 add-only 원칙을 그대로 따른다: 새 로직·화면·테스트는 새 파일로, 기존 파일에는 최소 연결 훅만.
-- 새 시퀀스에 필요한 상태는 기존 `FlowState`나 `EpiloguePhase`를 고쳐 쓰지 말고, 별도 상태 타입을 새 파일(구현된 예: `shared/wardenWarningLogic.ts`, `shared/blackoutLogic.ts`, `shared/rescueLogic.ts`, 다음 후보 `shared/dinnerIllusionLogic.ts`)로 만든다. `MemoryReconstructionGame.ts`에는 새 `Screen` 값 한 개와 그에 대응하는 분기만 추가하는 방식을 우선 검토한다. 다만 비트2·3처럼 "화면 전환의 목적지를 바꿔야 하는" 지점은 순수 추가만으로 불가능할 수 있다 — 그 경우 기존 조건문에 가드를 추가하는 최소 수정을 add-only 예외로 명시하고 리뷰에서 반드시 확인받는다(비트2·3에서 실제로 이런 예외가 각각 발생했다).
+- 새 시퀀스에 필요한 상태는 기존 `FlowState`나 `EpiloguePhase`를 고쳐 쓰지 말고, 별도 상태 타입을 새 파일(구현된 예: `shared/wardenWarningLogic.ts`, `shared/blackoutLogic.ts`, `shared/rescueLogic.ts`, `shared/dinnerIllusionLogic.ts`)로 만든다. `MemoryReconstructionGame.ts`에는 새 `Screen` 값 한 개와 그에 대응하는 분기만 추가하는 방식을 우선 검토한다. 다만 비트2·3·4처럼 "화면 전환의 목적지를 바꿔야 하는" 지점은 순수 추가만으로 불가능할 수 있다 — 그 경우 기존 조건문에 가드를 추가하는 최소 수정을 add-only 예외로 명시하고 리뷰에서 반드시 확인받는다(비트2·3·4에서 실제로 이런 예외가 각각 발생했다).
 - 새 배경·스프라이트 에셋은 `src/features/chapter3/assets/`에 추가한다. 기존 `chapter03-*.png` 파일은 교체하지 않는다.
 - 새 대사·카피는 원작 `Story/Chapter03.md`의 어휘와 말투(인물별 존댓말/반말 패턴)를 유지한다.
 - `DESIGN.md`에 없는 새 컴포넌트 토큰(예: 정전 연출 색상, 구출 서브시퀀스 UI, 식탁 환상 장면 배색)이 필요하면 구현 전에 `DESIGN.md`를 먼저 갱신하고 `npm run design:lint`를 통과시킨다.
