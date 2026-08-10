@@ -14,68 +14,64 @@
 
 ### Task
 
-Chapter 1 일반 경비복 탑뷰 영수와 인터랙티브 스토리 연출
+Chapter 3 경고·정전·가족 구출·마지막 저녁 로직 선택 통합
 
 ### Goal
 
-`src/assets/yeongsu-alien-suit-sprites.png`의 4방향 프레임 구조와 김영수의 정체성을 기준으로 일반 경비원 복장의 Chapter 1 전용 스프라이트를 만들고, Chapter 2·3의 탑뷰 쯔꾸르식 공간 연출을 Chapter 1 스토리에 섞는다. 기존 흰 화면 구간은 리듬 입력 없이 이동과 상호작용에 반응하는 짧은 시퀀스로 바꾼다.
+기존 Chapter 3의 배경·스프라이트·오브젝트 위치·기록 보관소 렌더링을 그대로 보존하면서, 새로 추가된 경고·정전·가족 구출·마지막 저녁 로직을 현재 `MemoryReconstructionGame` 진행 흐름에 선택적으로 연결한다.
 
 ### Context
 
-- 관련 기능: `src/features/chapter1/`
-- 프레임·체형 기준: `src/assets/yeongsu-alien-suit-sprites.png` (256×80, 64×80 프레임 4개)
-- 외형 기준: `src/assets/yeongsu-guard.png`
-- 참고 구현: `src/features/chapter2/client/MapScene.ts`, `src/features/chapter2/client/playerSprite.ts`, `src/features/chapter3/client/MemoryReconstructionGame.ts`, `src/features/chapter3/client/playerSprite.ts`
-- 현재 Chapter 1 스토리는 대부분 정지 배경과 대사 패널로 진행되며 whiteout 3개 비트도 단순한 광원 배경이다.
+- 관련 기능: `src/features/chapter3/client/MemoryReconstructionGame.ts`
+- 새 로직: `wardenWarningLogic.ts`, `blackoutLogic.ts`, `rescueLogic.ts`, `dinnerIllusionLogic.ts`, `dialogueBox.ts`
+- 기존 기억 재구성 완료 후 추억 정리에서 바로 놓아주기로 전환된다.
+- 현재 배경·가족 NPC·추억 오브젝트·장치·에필로그 에셋 통합은 유지해야 한다.
 
 ### Included Scope
 
-- 기존 256×80 4방향 레이아웃을 보존한 일반 경비복 영수 스프라이트 생성
-- Chapter 1 전용 결과물은 `src/features/chapter1/assets/`에 보관
-- 주요 장면 사이에 2~3개의 짧은 탑뷰 탐색·상호작용 구간 삽입
-- 경비실·CCTV·지하 계단실 장면에 탑뷰 맵 합성, 영수 방향 프레임, 오브젝트 강조와 공간 연출 적용
-- whiteout 구간에 이동 입력과 상호작용으로 진행되는 비리듬형 저항 시퀀스 적용
-- 키보드와 화면 포인터 입력, live region 안내, 로딩 fallback 유지
-- 스프라이트 실제 포맷·크기·프레임별 알파 경계, 표시 배율·발 기준선·이동 극값·상호작용 도달성 테스트
-- 브라우저에서 대표 탑뷰 장면과 whiteout 상호작용 시각·동작 확인
+- 장치 최초 상호작용 전 관리자 경고 시퀀스 연결
+- 추억 정리 완료 후 정전 시퀀스 연결
+- 정전 후 기존 맵에서 외계 가족 3명 구출 흐름 연결
+- 구출 완료 후 마지막 저녁 환상 대사와 기존 놓아주기 단계 연결
+- E·Enter·화면 클릭·다음 버튼, focus 이동과 live region 안내 통합
+- 구출 대상의 맵 경계·충돌 회피·상호작용 도달성 회귀 테스트
+- 기존 로직 단위 테스트와 통합 상태 전환 회귀 테스트
 
 ### Excluded Scope
 
-- `src/assets/yeongsu-alien-suit-sprites.png` 공통 원본 덮어쓰기
-- Chapter 2·3 코드·에셋·게임 흐름 변경
-- Chapter 1 대사 내용과 옥상 탈출 규칙 변경
-- 리듬 게임 복원, 전투, 인벤토리, 분기 엔딩 추가
-- 음원 편집·재작곡
+- 신규 이미지 생성·수정·import
+- 기존 가족·오브젝트·장치·배경·기록 보관소 좌표 또는 렌더링 변경
+- 기존 기억 퍼즐 규칙, 놓아주기 선택지와 에필로그 내용 변경
+- Chapter 1·2 코드와 에셋 변경
 
 ### Constraints
 
-- 관련 `AGENTS.md`, `DESIGN.md`, `src/assets/README.md` 규칙을 따른다.
-- 일반 경비복은 짙은 남색 모자·재킷·바지와 검은 신발로 통일하고, 기존 노년 체형·회색 머리·4방향 포즈를 유지한다.
-- 각 프레임은 64×80 셀에 들어가며 투명 배경, 보이는 발 기준선과 정수 배율을 사용한다.
-- 탑뷰 구간은 짧고 목표가 명확해야 하며 기존 클릭·Z·Enter 스토리 진행을 불필요하게 막지 않는다.
-- whiteout 인터랙션은 리듬 타이밍을 요구하지 않고 방향 이동과 한 번의 상호작용만 사용한다.
-- 대사 패널과 HUD 가독성, 로딩 실패 fallback, 기존 스토리→추격→옥상 흐름을 보존한다.
+- 관련 `AGENTS.md`, `DESIGN.md`, `$two-agent-harness` 규칙을 따른다.
+- 현재 `MemoryReconstructionGame.ts`의 에셋 import, 이미지 로딩, draw geometry와 맵 좌표를 보존한다.
+- 새 장면은 기존 배경과 디자인 토큰 기반 Canvas 도형·대사 상자만 사용한다.
+- 구출 대상은 플레이어의 26×26 충돌 몸체와 실제 이동 가능 영역을 기준으로 모두 도달 가능해야 한다.
+- 기존 퍼즐→추억 정리와 놓아주기→에필로그 양 끝 흐름 및 로딩 fallback을 보존한다.
 
 ### Done When
 
-- [ ] Chapter 1 전용 일반 경비복 영수 시트가 256×80 RGBA와 4×64×80 레이아웃을 만족한다.
-- [ ] 경비실·CCTV·지하 계단실의 대표 비트가 탑뷰 맵과 방향성 영수 스프라이트를 합성한다.
-- [ ] 최소 2개의 짧은 탐색 목표가 이동·포인터·상호작용으로 완료되고 다음 스토리 비트로 이어진다.
-- [ ] whiteout는 이동에 시각적으로 반응하고 목표 도달 후 Z·Enter·클릭으로 완료된다.
-- [ ] 대사 내용, fallback, 스토리→추격→옥상 흐름이 유지된다.
-- [ ] 에셋·렌더 좌표·상호작용 경계 테스트, 브라우저 확인, 필수 프로젝트 검사와 독립 리뷰가 완료된다.
+- [ ] 진행 순서가 경고→기억 퍼즐→추억 정리→정전→가족 구출→마지막 저녁→놓아주기→에필로그로 연결된다.
+- [ ] 기존 배경·스프라이트·오브젝트·장치·기록 보관소 에셋 코드와 좌표가 변경되지 않는다.
+- [ ] 세 구출 대상이 기존 맵에서 충돌물을 피해 상호작용 가능한 위치까지 도달 가능하다.
+- [ ] 키보드·포인터·다음 버튼과 focus·live region 안내가 모든 새 상태에서 동작한다.
+- [ ] 기존 퍼즐·놓아주기·에필로그와 fallback 동작이 유지된다.
+- [ ] 필수 프로젝트 검사와 Terra 독립 리뷰가 완료된다.
 
 ## Agent Understanding
 
 > 메인 에이전트 소유 영역입니다. 구현 전에 이해한 목표, 범위와 완료 조건을 기록합니다.
 
-기존 요청의 개발자 확인 피드백으로 Chapter 1 기능 폴더에 남아 있는 주인공 영수의 캐릭터 에셋을 공통 에셋 폴더 `src/assets/`로 이동한다. 현재 사용 중인 네 방향 일반 경비원 스프라이트 `chapter01-yeongsu-guard-sprites.png`와 레거시 리듬 게임의 `yeongsu-guard-sprite.png`를 바이너리 변경 없이 옮기고 모든 import·메타데이터·에셋 검증 테스트를 새 경로로 갱신한다. 이미 공통 폴더에 같은 파일이 있는 `src/features/chapter1/assets/yeongsu-guard.png` 중복본은 공통 원본만 남긴다. 캐릭터가 아닌 Chapter 3의 `yeongsu-quarters.png` 배경은 기능 전용 에셋으로 유지한다.
+Chapter 3의 현재 에셋 import·로딩·좌표·렌더링은 바꾸지 않고 다섯 신규 shared 모듈을 `MemoryReconstructionGame`에 연결한다. 경고는 장치 최초 작동 전에, 정전은 추억 정리 완료 뒤에, 가족 구출과 마지막 저녁은 놓아주기 전에 순서대로 배치한다. 새 상태의 입력·focus·live region과 세 구출 지점의 실제 이동 도달성을 검증하며 기존 퍼즐·놓아주기·에필로그 양끝 흐름을 보존한다.
 
 ## Agent Questions
 
 > 메인 에이전트 소유 영역입니다. 개발자의 판단이 필요한 질문과 확인 상태를 기록합니다.
 
-없음. “주인공 영수와 관련된 에셋”은 영수 캐릭터의 초상·전신·방향 스프라이트를 뜻하는 것으로 해석하며, 영수의 방처럼 이름에만 영수가 포함된 장소·배경 에셋은 제외한다. 파일명은 기존 참조와 에셋 정체성을 보존하기 위해 그대로 유지하고 경로만 공통 폴더로 변경한다.
+없음. 사용자가 신규 이미지 에셋 관련 로직을 제외하고 상태·대사·입력 흐름만 적용하도록 명시적으로 승인했다. 구출 대상은 현재 임시 Canvas 도형으로 표시하며 별도 픽셀 아트 교체는 asset lane 후속 작업으로 남긴다.
 
 ## Developer Decisions
 
@@ -88,9 +84,11 @@ Chapter 1 일반 경비복 탑뷰 영수와 인터랙티브 스토리 연출
 
 > 메인 에이전트 소유 영역입니다. 구현 결과, 검사 결과, 리뷰 대응과 남은 위험을 기록합니다.
 
-Chapter 1 기능 폴더의 영수 캐릭터 에셋을 공통 폴더로 정리했다. `chapter01-yeongsu-guard-sprites.png`와 `yeongsu-guard-sprite.png`를 `src/assets/`로 이동하고, 스토리·옥상 탈출·레거시 리듬 게임의 import와 `CHAPTER01_TOPVIEW_SPRITE.path`를 공통 경로로 갱신했다. 추적돼 있던 레거시 전신 스프라이트는 이동 전후 Git blob hash가 일치한다. 기능 폴더의 `yeongsu-guard.png`는 공통 원본과 SHA-256이 완전히 같은 중복본임을 확인한 뒤 제거했으며 공통 원본은 그대로 보존했다. `yeongsu-quarters.png`는 캐릭터가 아닌 Chapter 3 배경이므로 이동하지 않았다.
+Chapter 3의 기존 배경·영수·가족 NPC·추억 오브젝트·재구성 장치·기록 보관소 import와 좌표·draw geometry를 유지한 채 신규 로직 다섯 모듈을 `MemoryReconstructionGame`에 연결했다. 진행 순서는 장치 앞 관리자 경고→기존 기억 퍼즐→추억 정리→정전→외계 가족 3명 구출→마지막 저녁 환상→기존 놓아주기→에필로그다. E·Enter·Canvas 클릭·공용 다음 버튼, 상태별 focus 이동과 live region 메시지를 새 화면에 연결했다. 신규 이미지는 추가하거나 import하지 않았으며 정전 후에도 기존 `drawMemoryArea()` 에셋 렌더 경로를 유지한다.
 
-회귀 테스트는 세 공통 영수 에셋의 존재, 이전 Chapter 1 경로의 부재, 새 탑뷰 메타데이터 경로, 실제 PNG 크기·RGBA·프레임 알파 경계를 검증한다. `npm run typecheck`, `npm run test`(40개 파일·194개 테스트), `npm run build`, `git diff --check`가 모두 통과했고 프로덕션 번들에 새 공통 탑뷰 스프라이트가 포함됨을 확인했다. 독립 검토자는 stale import, 누락 파일, 잘못 이동된 배경이나 동작 회귀를 발견하지 않았다. 이동 전 untracked였던 탑뷰 시트는 이전 Git blob과 직접 비교할 수 없지만 파일 이동 외 바이너리 가공은 하지 않았고, 이전 검토와 같은 18,893 bytes 및 실제 PNG 검증을 유지한다. 레거시 리듬 게임은 현재 앱 진입점에서 사용되지 않아 해당 전신 스프라이트가 프로덕션 번들에는 포함되지 않지만 import 해석과 해당 게임 테스트는 통과한다.
+구출 대상 3명의 좌표는 26×26 플레이어 몸체, 보이는 스프라이트 여백과 `MEMORY_ROOM_MAP` 충돌 영역을 사용한 4px BFS로 spawn에서 각 상호작용 반경까지 도달 가능함을 검증한다. 실제 `MemoryReconstructionGame` 인스턴스를 가짜 Canvas·컨트롤과 고정 시간으로 구동하는 테스트는 경고 페이드, 퍼즐 성공 복귀, 마지막 추억 수집, 정전 페이드, 세 가족의 순차 대사·해제, 구출 완료 페이드, 저녁 대사·페이드와 놓아주기 도착, focus와 live region을 실행한다. 별도 계약 테스트는 기존 에셋 로딩·가족/오브젝트/에필로그 렌더 경로 보존을 고정한다.
+
+`npm run typecheck`, `npm run test`(57개 파일·261개 테스트), `npm run build`, `git diff --check`가 모두 통과했다. Terra 독립 리뷰의 상태 전환 테스트가 소스 문자열 검사에 머문다는 지적을 실제 인스턴스 시퀀스 테스트로 해결했고, 같은 리뷰어의 재검증에서 해결 확인 및 새 차단 문제 없음 판정을 받았다. 남은 위험은 브라우저 백엔드가 없어 실제 키보드·버튼·Canvas 이벤트 디스패치와 Canvas 레이어 가독성을 런타임에서 확인하지 못한 점이다.
 
 ## Developer Final Check
 
