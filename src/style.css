@@ -51,7 +51,7 @@ canvas {
   border-radius: 12px;
   outline: none;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
-  image-rendering: pixelated;
+  image-rendering: auto;
   touch-action: manipulation;
 }
 

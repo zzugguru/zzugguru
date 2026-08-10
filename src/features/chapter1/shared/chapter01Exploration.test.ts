@@ -5,9 +5,11 @@ import {
   clampExplorationPoint,
   explorationForBeat,
   facingForDirection,
+  getExplorationPlayerCollisionBounds,
   getExplorationPlayerVisibleBounds,
   getSafeExplorationAnchorBounds,
   isExplorationTargetReached,
+  isExplorationPositionAllowed,
   moveExplorationPlayer,
   moveExplorationPlayerToward,
 } from './chapter01Exploration';
@@ -49,6 +51,48 @@ describe('Chapter 01 top-view exploration', () => {
       expect(position.y).toBeGreaterThanOrEqual(definition.bounds.top);
       expect(position.y).toBeLessThanOrEqual(definition.bounds.bottom);
     }
+  });
+
+  it('blocks the player body from every mapped wall and furniture footprint', () => {
+    for (const definition of CHAPTER01_EXPLORATIONS) {
+      expect(isExplorationPositionAllowed(definition.start, definition), `${definition.id} start`).toBe(true);
+      expect(isExplorationPositionAllowed(definition.target, definition), `${definition.id} target`).toBe(true);
+
+      for (const obstacle of definition.obstacles) {
+        const inside = {
+          x: (obstacle.left + obstacle.right) / 2,
+          y: (obstacle.top + obstacle.bottom) / 2,
+        };
+        expect(isExplorationPositionAllowed(inside, definition), `${definition.id} obstacle`).toBe(false);
+      }
+    }
+  });
+
+  it('stops at furniture edges instead of walking through them', () => {
+    const guardRoom = CHAPTER01_EXPLORATIONS[0];
+    const besideCabinet = { x: 820, y: 326 };
+    const movedLeft = moveExplorationPlayer(besideCabinet, 'left', 0.05, guardRoom);
+
+    expect(getExplorationPlayerCollisionBounds(besideCabinet).left).toBe(807);
+    expect(movedLeft).toEqual(besideCabinet);
+  });
+
+  it('keeps a 60Hz cardinal keyboard route from the guard-room spawn to the desk target', () => {
+    const guardRoom = CHAPTER01_EXPLORATIONS[0];
+    let position = { x: Number(guardRoom.start.x), y: Number(guardRoom.start.y) };
+    const step = (direction: 'down' | 'left', frames: number) => {
+      for (let frame = 0; frame < frames; frame += 1) {
+        position = moveExplorationPlayer(position, direction, 1 / 60, guardRoom);
+      }
+    };
+
+    step('down', 3);
+    step('left', 80);
+    step('down', 10);
+    step('left', 50);
+
+    expect(isExplorationPositionAllowed(position, guardRoom)).toBe(true);
+    expect(isExplorationTargetReached(position, guardRoom)).toBe(true);
   });
 
   it('keeps the maximum four-direction silhouette inside the story background and above the dialogue panel', () => {
