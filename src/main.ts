@@ -66,7 +66,7 @@ app.querySelectorAll<HTMLButtonElement>('[data-game]').forEach((button) => butto
     requestAnimationFrame(() => canvas.focus());
   } else if (button.dataset.game === 'chapter2') {
     canvas.setAttribute('aria-label', 'Chapter 02 이온 게임 화면');
-    controlsText.textContent = '이동: 방향키 · 확인: Z 또는 클릭 · CCTV 채널 전환: ◀ ▶';
+    controlsText.textContent = '이동: 방향키 · 확인: E/Enter 또는 클릭 · CCTV 채널 전환: ◀ ▶';
     new Chapter2Game(canvas).mount();
     requestAnimationFrame(() => canvas.focus());
   } else {

@@ -43,6 +43,6 @@ export class FamilyPhotoScene implements Scene {
     if (this.index >= PHOTO_REVEAL_INDEX) {
       renderPhotoFrame(context, canvas);
     }
-    renderDialogueBox(context, canvas, LINES[this.index], 'Z ▶ 다음');
+    renderDialogueBox(context, canvas, LINES[this.index], 'E/Enter ▶ 다음');
   }
 }

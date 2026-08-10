@@ -1,6 +1,6 @@
 # Current Logic Work Brief
 
-이 파일은 로직 작업 전용 요청, 질문, 결정과 결과를 공유하는 단일 창구입니다. 에셋 작업은 `BRIEF_ASSET.md`에서 독립적으로 관리합니다.
+이 파일은 로직 작업 전용 계약입니다. CCTV 이미지 제작은 `BRIEF_ASSET.md`에서 별도 에셋 세션이 담당합니다.
 
 ## Status
 
@@ -10,64 +10,69 @@
 
 ### Task
 
-Chapter 3 하단 마우스 이동·상호작용 인터페이스 제거
+Chapter 2 CCTV 채널 진행과 2D 화면 연출 개발
 
 ### Goal
 
-Chapter 3 게임 하단에 표시되는 방향 버튼과 상호작용 버튼을 제거해 Canvas와 키보드 중심 인터페이스로 단순화한다.
+빈 단색 CCTV 화면을 채널별 2D 그림이 표시되는 장면으로 발전시키고, 채널 순환과 불명확한 다음 행동을 수정한다.
 
 ### Included Scope
 
-- 하단 `▲ ◀ ▼ ▶` 방향 버튼 제거
-- 하단 상황별 상호작용 버튼 제거
-- 관련 pointer 및 click 이벤트 연결과 UI 상태 업데이트 제거
-- 맵·개인실 복도·기록 보관소 진입 시 Canvas로 포커스 이동
-- 안내 문구를 키보드 입력 기준으로 수정
+- 채널 이동을 1/3~3/3 경계에서 정지시켜 순환 방지
+- 정답 채널 확인·독백 종료 후 다음 목표 채널로 자동 이동
+- `다음 CCTV 화면으로 이동했습니다` 상태 피드백 표시
+- 잘못된 채널 확인 피드백과 현재 진행 단계 표시
+- 에셋 세션이 제공할 3개 이미지를 명시적 채널 매핑으로 로드·렌더링
+- 이미지 로딩 실패 시 기존 단색 화면 fallback 유지
+- 스캔라인, 채널명, 시간, 신호 상태 HUD를 Canvas로 표시
+- E/Enter·클릭 확인과 좌우 방향키 유지
 
 ### Excluded Scope
 
-- 방향키/WASD, E/Enter 키보드 입력 변경
-- Canvas 클릭으로 대사·장면 진행하는 기존 동작 변경
-- 가족 선택, 놓아주기 선택, 다음, 재시도, 복귀 버튼 제거
-- 게임 로직, 에셋, 좌표와 장면 흐름 변경
+- CCTV 이미지 생성·편집
+- Chapter 2 다른 장면·게임 흐름·에셋 변경
+- Chapter 1·3 변경
 
-### Constraints
+### Asset Contract
 
-- `AGENTS.md`, `DESIGN.md`, `$two-agent-harness`를 따른다.
-- 키보드 사용자가 맵 진입 시 즉시 조작할 수 있도록 Canvas 포커스를 유지한다.
-- 다른 챕터 UI와 Chapter 3의 비이동 선택 버튼은 유지한다.
+- `src/features/chapter2/assets/cctv-parking-memory.png`
+- `src/features/chapter2/assets/cctv-lobby-memory.png`
+- `src/features/chapter2/assets/cctv-guard-door-memory.png`
+- 각 파일은 600×340 RGB/RGBA PNG이며 글자·UI·프레임을 이미지에 굽지 않는다.
 
 ### Done When
 
-- [ ] DOM과 CSS에서 `.map-controls`, 방향 버튼, 상호작용 버튼이 제거된다.
-- [ ] `MemoryReconstructionGame`이 해당 요소 없이 생성·실행된다.
-- [ ] 방향키/WASD, E/Enter와 기존 진행 버튼이 유지된다.
-- [ ] 맵·복도·보관소 전환 시 Canvas가 포커스를 받는다.
+- [ ] 1/3에서 왼쪽, 3/3에서 오른쪽 입력이 채널을 순환시키지 않는다.
+- [ ] 각 정답 확인 후 독백을 닫으면 다음 목표 채널과 명확한 피드백이 표시된다.
+- [ ] 세 채널에 대응하는 2D 그림과 CCTV HUD가 표시된다.
+- [ ] 이미지 실패 시 fallback 화면과 전체 진행이 유지된다.
+- [ ] 마지막 3/3 확인 후에만 장면이 완료된다.
 - [ ] 필수 검사와 Terra 독립 리뷰가 완료된다.
 
 ## Agent Understanding
 
-하단 map controls DOM과 관련 CSS·Controls 계약·이벤트 연결을 제거한다. 기존 키보드 입력과 Canvas click, 가족/놓아주기/다음/재시도/복귀 버튼은 유지한다. 방향 버튼으로 보내던 focus는 focus 가능한 Canvas로 이동하고 테스트로 보호한다.
+로직 세션은 기존 채널 상태 머신, 경계 이동과 진행 피드백을 보존하면서 에셋 세션이 제공한 600×340 PNG 3개를 지하주차장→1층 로비→경비실 앞 채널에 명시적으로 매핑한다. 유효한 이미지는 600×340 native size로 렌더링하고 채널명·시간·신호·스캔라인 HUD는 Canvas로 덧씌운다. 로딩 실패나 오규격 이미지에서는 기존 단색 화면 fallback과 전체 진행을 유지한다.
 
 ## Agent Questions
 
-없음. 사용자가 제안된 제거 범위를 승인했다.
+해결됨. `BRIEF_ASSET.md` 에셋 세션이 지정된 600×340 RGB PNG 3개를 생성했고 사용자가 CCTV 적용을 요청해 로직 세션을 재개했다.
 
 ## Developer Decisions
 
-- 2026-08-10: 로직 작업은 `BRIEF.md`, 에셋 작업은 `BRIEF_ASSET.md`를 사용하며 별도 세션에서 진행한다.
-- 2026-08-10: Chapter 3 하단 방향·상호작용 버튼은 제거하되 키보드와 나머지 진행 버튼은 유지한다.
+- 2026-08-10: 로직은 `BRIEF.md`, 이미지 생성은 `BRIEF_ASSET.md`의 별도 세션이 담당한다.
+- 2026-08-10: CCTV 장면은 지하주차장→1층 로비→경비실 앞 순서이며 채널 이동은 양 끝에서 순환하지 않는다.
 
 ## Agent Result
 
-- Chapter 3 하단의 `.map-controls`, 방향 버튼 4개와 상황별 상호작용 버튼을 DOM 및 CSS에서 제거했다.
-- `MemoryReconstructionGame`의 Controls 계약, pointer 이벤트와 버튼 상태 업데이트에서 해당 요소 의존성을 제거했다. 안내 문구도 `방향키/WASD`, `E/Enter` 기준으로 수정했다.
-- 방향 버튼으로 보내던 focus는 맵 복귀, 정전 종료, 구출 복귀, 개인실 복도 및 기록 보관소 입장 시 focus 가능한 Canvas로 이동한다.
-- 방향키/WASD와 E/Enter, Canvas 클릭, 가족 선택·놓아주기·다음·재시도·복귀 버튼은 유지했다.
-- Terra 리뷰에서 발견한 기록 보관소 문·기록 근접 안내 누락을 live region용으로 복원했고, 기록실 입장 시 Canvas focus를 추가했다.
-- 이벤트 테스트는 KeyW press/release, KeyE 상호작용, Canvas 대사 클릭, 기록실 KeyE 입장·focus와 문·기록 근접 안내를 검증한다. 소스 계약 테스트는 제거된 DOM/CSS 식별자가 없고 키보드 매핑이 남아 있음을 보호한다.
-- 최종 검사 결과: `npm run typecheck`, `npm run test`(263/263), `npm run build`, `git diff --check` 모두 통과했다. 동일 Terra 리뷰어의 재검증에서도 추가 finding이 없었다.
-- 남은 위험: 브라우저 런타임에서 실제 레이아웃 여백과 키보드 포커스 표시를 육안 확인하지 못했다.
+- CCTV 채널 이동을 1/3~3/3 경계에서 고정하고, 정답 독백 종료 시 다음 목표 채널 자동 선택, 다음 화면·잘못된 화면·진행 단계 피드백을 유지했다.
+- `cctv-parking-memory.png`, `cctv-lobby-memory.png`, `cctv-guard-door-memory.png`를 지하주차장→1층 로비→경비실 앞에 명시적으로 매핑하고 Vite `new URL(..., import.meta.url)` 경로로 로드한다.
+- 유효한 이미지는 원본과 같은 600×340 크기로 화면 `(180,80)`에 nearest-neighbor 렌더링한다. 미로딩·오규격 이미지는 기존 `#111827` 단색 화면을 유지하며 진행 상태와 입력에는 영향을 주지 않는다.
+- 채널 번호·장소, 관측 시간, 단계별 신호 상태와 4px 간격 스캔라인은 이미지가 아닌 Canvas HUD로 덧씌우고, 독백 오버레이가 가장 마지막에 그려져 HUD를 가리도록 유지했다.
+- 조작 안내는 Chapter 2 공통 입력인 `E/Enter`를 표시하며 shared `InputState`를 통한 클릭 확인과 좌우 채널 입력도 유지된다.
+- 테스트 15개가 에셋 순서, native draw, 로딩·치수 실패, fallback 패널, Canvas HUD, 양끝 경계, 오답, 자동 이동과 최종 완료를 검증한다.
+- 필수 검사: `npm run typecheck`, `npm run test`(62개 파일·300개 테스트), `npm run build`(세 PNG 번들 포함), `git diff --check` 모두 통과했다.
+- Terra 독립 리뷰에서 finding이 없었고 채널 매핑, fallback, HUD 그리기 순서, E/Enter·클릭 및 진행 회귀를 확인했다.
+- 남은 위험: 제어 가능한 브라우저에서 실제 Canvas 대비와 이미지 로딩 순간을 캡처하지 못해 소스·에셋·단위 테스트 검증으로 대체했다.
 
 ## Developer Final Check
 

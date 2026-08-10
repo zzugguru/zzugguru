@@ -100,7 +100,7 @@ export class ToyInteractionScene implements Scene {
     }
 
     if (this.isPlayerNearToy && !this.memoryTriggered) {
-      this.drawPrompt(context, 'Z : 장난감 조사하기');
+      this.drawPrompt(context, 'E/Enter : 장난감 조사하기');
     }
 
     if (this.memoryTriggered && !this.readyToAdvance) {
@@ -142,6 +142,6 @@ export class ToyInteractionScene implements Scene {
 
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
     context.fillStyle = '#C7D2FE';
-    context.fillText('Z ▶ 계속', canvas.width / 2, canvas.height / 2 + 60);
+    context.fillText('E/Enter ▶ 계속', canvas.width / 2, canvas.height / 2 + 60);
   }
 }

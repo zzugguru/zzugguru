@@ -35,7 +35,7 @@ export class DialogueScene implements Scene {
       return;
     }
 
-    renderDialogueBox(context, canvas, this.lines[this.index], 'Z ▶ 다음');
+    renderDialogueBox(context, canvas, this.lines[this.index], 'E/Enter ▶ 다음');
   }
 
   private renderEndState(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
