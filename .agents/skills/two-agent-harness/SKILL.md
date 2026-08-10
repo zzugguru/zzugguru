@@ -5,7 +5,16 @@ description: "Implement the active BRIEF.md request and independently verify it 
 
 # Two-Agent Feature Harness
 
-Deliver one coherent feature with a sequential implement-review-fix-verify loop. Keep the total agent count at two: the current main agent and exactly one reviewer subagent.
+Deliver one coherent feature with a sequential implement-review-fix-verify loop. Keep the total agent count at two: the current main agent and exactly one reviewer subagent. Always create the reviewer with the `gpt-5.6-terra` model and `fork_turns: "none"`; the reviewer must recover its context from `BRIEF.md`, the working-tree diff, and the paths named in the review brief.
+
+## Loop limit
+
+Limit every repeated work loop to two iterations per task. This includes implementation-test-fix, asset-generate-inspect-regenerate, and review-fix-reverify loops.
+
+- Count the first retry after an unsuccessful result as iteration one.
+- Do not start a third retry without explicit developer approval.
+- If the task is still incomplete after iteration two, stop the loop, record the unresolved issue and evidence in `Agent Questions` and `Agent Result`, set the status to `NEEDS_INPUT`, and ask the developer whether to continue.
+- If the developer approves continuation, start a new bounded run with the same two-iteration limit.
 
 ## 1. Establish the contract
 
@@ -55,7 +64,7 @@ Fix failures introduced by the change. Record any pre-existing failure with evid
 
 ## 5. Delegate one independent review
 
-Spawn exactly one subagent after the implementation and initial checks are complete. Give it a concrete, bounded, read-only review task. Require it to read the active contract directly from `BRIEF.md`, then pass only the changed scope, relevant paths, and verification commands. Do not pass a suspected answer or ask it to confirm the main agent's conclusions.
+Spawn exactly one subagent after the implementation and initial checks are complete. Set `model` to `gpt-5.6-terra` and `fork_turns` to `"none"`. Give it a concrete, bounded, read-only review task. Require it to read the active contract directly from `BRIEF.md`, then pass only the changed scope, relevant paths, and verification commands. Do not pass a suspected answer or ask it to confirm the main agent's conclusions.
 
 Use this reviewer brief, adapted to the feature:
 
@@ -111,7 +120,7 @@ Have the main agent make all fixes. Re-run the relevant checks.
 
 Send a follow-up task to the same reviewer. Ask it to verify that its findings are resolved and that the fixes introduced no new regression. Keep this pass read-only.
 
-If the reviewer identifies a new valid blocking issue, repeat the main-agent fix and same-reviewer verification loop. Do not spawn a replacement reviewer merely to obtain a different verdict.
+If the reviewer identifies a new valid blocking issue, repeat the main-agent fix and same-reviewer verification loop, subject to the two-iteration limit above. Do not spawn a replacement reviewer merely to obtain a different verdict.
 
 ## 8. Finish transparently
 

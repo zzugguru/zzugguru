@@ -14,22 +14,20 @@ export function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
+export function isMapPositionAllowed(position: Point, map: PlayableMapAssetEntry = SPACESHIP_MAP): boolean {
+  const body = { ...position, width: PLAYER_SIZE, height: PLAYER_SIZE };
+  const visibleInside = body.x - PLAYER_SPRITE_SIDE_OVERHANG >= map.bounds.x
+    && body.y - PLAYER_SPRITE_TOP_OVERHANG >= map.bounds.y
+    && body.x + body.width + PLAYER_SPRITE_SIDE_OVERHANG <= map.bounds.x + map.bounds.width
+    && body.y + body.height <= map.bounds.y + map.bounds.height;
+  return visibleInside && !map.collisions.some((obstacle) => overlaps(body, obstacle));
+}
+
 export function movePlayer(position: Point, dx: number, dy: number, map: PlayableMapAssetEntry = SPACESHIP_MAP): Point {
-  const tryAxis = (candidate: Point): Point => {
-    const body = { ...candidate, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.x - PLAYER_SPRITE_SIDE_OVERHANG >= map.bounds.x
-      && body.y - PLAYER_SPRITE_TOP_OVERHANG >= map.bounds.y
-      && body.x + body.width + PLAYER_SPRITE_SIDE_OVERHANG <= map.bounds.x + map.bounds.width
-      && body.y + body.height <= map.bounds.y + map.bounds.height;
-    return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? candidate : position;
-  };
-  const afterX = tryAxis({ x: position.x + dx, y: position.y });
-  if (afterX !== position) {
-    const body = { x: afterX.x, y: afterX.y + dy, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    const inside = body.y - PLAYER_SPRITE_TOP_OVERHANG >= map.bounds.y && body.y + body.height <= map.bounds.y + map.bounds.height;
-    return inside && !map.collisions.some((obstacle) => overlaps(body, obstacle)) ? { x: afterX.x, y: afterX.y + dy } : afterX;
-  }
-  return tryAxis({ x: position.x, y: position.y + dy });
+  const xCandidate = { x: position.x + dx, y: position.y };
+  const afterX = isMapPositionAllowed(xCandidate, map) ? xCandidate : position;
+  const yCandidate = { x: afterX.x, y: position.y + dy };
+  return isMapPositionAllowed(yCandidate, map) ? yCandidate : afterX;
 }
 
 export function canInteract(position: Point, map: PlayableMapAssetEntry = SPACESHIP_MAP): boolean {
