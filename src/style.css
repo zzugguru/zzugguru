@@ -112,14 +112,46 @@ kbd {
 }
 
 .chapter-menu {
+  position: relative;
+  isolation: isolate;
   display: grid;
   gap: 16px;
+  min-height: 540px;
   padding: 32px;
+  overflow: hidden;
   border: 1px solid #374151;
   border-radius: 12px;
-  background: #111827;
+  background-color: #111827;
+  background-image:
+    linear-gradient(180deg, rgb(3 7 18 / 8%), rgb(3 7 18 / 48%)),
+    url('./features/welcome/assets/chapter-menu-apartment-spaceship.png'),
+    linear-gradient(135deg, #111827, #312e81);
+  background-position: center;
+  background-size: cover;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
   text-align: center;
+}
+
+.chapter-menu::before {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: min(calc(100% - 48px), 540px);
+  height: calc(100% - 96px);
+  border: 1px solid rgb(129 140 248 / 35%);
+  border-radius: 12px;
+  background: rgb(17 24 39 / 82%);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 45%);
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+.chapter-menu > * {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 480px);
+  justify-self: center;
 }
 
 .chapter-menu h1 {
@@ -221,6 +253,26 @@ kbd {
 }
 
 @media (max-width: 640px) {
-  .chapter-menu h1 { font-size: 28px; }
-  .memory-choices { grid-template-columns: 1fr; }
+  #app {
+    padding: 16px;
+  }
+
+  .chapter-menu {
+    min-height: min(640px, calc(100vh - 32px));
+    padding: 24px;
+    background-position: 54% center;
+  }
+
+  .chapter-menu::before {
+    width: calc(100% - 32px);
+    height: calc(100% - 64px);
+  }
+
+  .chapter-menu h1 {
+    font-size: 28px;
+  }
+
+  .memory-choices {
+    grid-template-columns: 1fr;
+  }
 }
