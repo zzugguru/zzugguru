@@ -4,14 +4,20 @@ import { moveMapPlayer } from '../shared/mapMovement';
 import type { Vector2 } from '../shared/vector';
 import type { InputState } from './input';
 import type { Scene } from './Sequence';
+import { drawInteractionObject, type ObjectVisual } from './interactionObjectSprite';
 
 export interface MapObjectDefinition extends MapObject {
   label: string;
+  /** 맵에 상시 표시할 짧은 오브젝트 이름. `label`은 근접 행동 프롬프트에만 사용한다. */
+  visualLabel?: string;
   /** 상호작용 시 잠깐 보여줄 텍스트. 없으면 조용히 완료 처리만 된다. */
   message?: string;
   onInteract?: () => void;
   /** 이 목록의 오브젝트 중 "하나 이상"과 먼저 상호작용해야 이 오브젝트가 활성화된다. */
   unlockedBy?: string[];
+  visual?: ObjectVisual;
+  /** 배경 이미지에 이미 포함된 오브젝트는 에셋과 fallback 마커를 다시 그리지 않는다. */
+  renderMarker?: boolean;
 }
 
 const OBJECT_SIZE = 16;
@@ -19,6 +25,22 @@ import { createLoadedImage, type MapVisual } from './mapVisuals';
 import { drawPlayer, facingFromDirection, PLAYER_COLLISION_SIZE, type Facing } from './playerSprite';
 
 const playerSpriteUrl = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
+const interactionObjectUrl = new URL('../assets/interaction-objects.png', import.meta.url).href;
+
+export function objectLabelPosition(object: MapObjectDefinition): Vector2 {
+  const position = object.visual?.position ?? object.position;
+  const objectHeight = object.visual?.height ?? OBJECT_SIZE;
+  return { x: position.x, y: position.y + objectHeight / 2 + 16 };
+}
+
+export function objectPromptPosition(object: MapObjectDefinition): Vector2 {
+  const label = objectLabelPosition(object);
+  return { x: label.x, y: label.y + 24 };
+}
+
+export function shouldRenderObjectMarker(object: MapObjectDefinition): boolean {
+  return object.renderMarker !== false;
+}
 
 /**
  * 오브젝트 배열로 정의된 맵을 재생하는 범용 씬. 필수(required) 오브젝트를 "전부" 상호작용해야 완료된다.
@@ -38,6 +60,7 @@ export class MapScene implements Scene {
   private facing: Facing = 'down';
   private readonly backgroundImage: HTMLImageElement | null;
   private readonly playerImage = createLoadedImage(playerSpriteUrl);
+  private readonly objectImage = createLoadedImage(interactionObjectUrl);
 
   constructor(
     private readonly objects: MapObjectDefinition[],
@@ -98,6 +121,7 @@ export class MapScene implements Scene {
 
     for (const object of this.objects) {
       this.renderObject(context, object);
+      this.renderObjectLabel(context, object);
     }
 
     if (!drawPlayer(context, this.playerImage, this.playerPosition, this.facing)) {
@@ -117,13 +141,14 @@ export class MapScene implements Scene {
 
     const promptTarget = this.findInteractable();
     if (promptTarget) {
+      const promptPosition = objectPromptPosition(promptTarget);
       context.font = '16px Inter, Pretendard, system-ui, sans-serif';
       context.fillStyle = '#F9FAFB';
       context.textAlign = 'center';
       context.fillText(
         `Z : ${promptTarget.label}`,
-        promptTarget.position.x,
-        promptTarget.position.y - OBJECT_SIZE,
+        promptPosition.x,
+        promptPosition.y,
       );
     }
   }
@@ -150,12 +175,27 @@ export class MapScene implements Scene {
   }
 
   private renderObject(context: CanvasRenderingContext2D, object: MapObjectDefinition): void {
+    if (!shouldRenderObjectMarker(object)) return;
+    if (object.visual && drawInteractionObject(context, this.objectImage, object.visual, this.interactedIds.has(object.id))) return;
     context.fillStyle = this.interactedIds.has(object.id) ? '#374151' : '#F9FAFB';
     context.fillRect(
       object.position.x - OBJECT_SIZE / 2,
       object.position.y - OBJECT_SIZE / 2,
       OBJECT_SIZE,
       OBJECT_SIZE,
+    );
+  }
+
+  private renderObjectLabel(context: CanvasRenderingContext2D, object: MapObjectDefinition): void {
+    const position = objectLabelPosition(object);
+    const completed = this.interactedIds.has(object.id);
+    context.fillStyle = '#C7D2FE';
+    context.font = '12px Inter, Pretendard, system-ui, sans-serif';
+    context.textAlign = 'center';
+    context.fillText(
+      completed ? `${object.visualLabel ?? object.label} · 완료` : (object.visualLabel ?? object.label),
+      position.x,
+      position.y,
     );
   }
 

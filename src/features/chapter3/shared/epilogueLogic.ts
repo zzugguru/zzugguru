@@ -6,11 +6,11 @@ export type EpilogueState = { phase: EpiloguePhase; placed: readonly string[]; s
 export type ArchiveRecord = { id: string; name: string; x: number; y: number; monologue: string };
 
 export const ARCHIVE_RECORDS: readonly ArchiveRecord[] = [
-  { id: 'photo', name: '가족사진', x: 170, y: 150, monologue: '영수: “우리가 함께 웃었다는 기록.”' },
-  { id: 'voice', name: '아내의 목소리', x: 350, y: 370, monologue: '영수: “당신 목소리를 사람으로 만들지는 않을게.”' },
-  { id: 'tool', name: '큰아들의 수리 도구', x: 530, y: 150, monologue: '영수: “함께하지 못한 미래도 사랑의 흔적이었다.”' },
-  { id: 'star', name: '작은딸과 본 별의 좌표', x: 710, y: 370, monologue: '영수: “네가 보았으면 좋아했을 별.”' },
-  { id: 'table', name: '마지막 식탁의 기록', x: 850, y: 150, monologue: '영수: “작별도 우리가 함께한 시간이다.”' },
+  { id: 'photo', name: '가족사진', x: 230, y: 170, monologue: '영수: “우리가 함께 웃었다는 기록.”' },
+  { id: 'voice', name: '아내의 목소리', x: 307, y: 375, monologue: '영수: “당신 목소리를 사람으로 만들지는 않을게.”' },
+  { id: 'tool', name: '큰아들의 수리 도구', x: 463, y: 170, monologue: '영수: “함께하지 못한 미래도 사랑의 흔적이었다.”' },
+  { id: 'star', name: '작은딸과 본 별의 좌표', x: 632, y: 375, monologue: '영수: “네가 보았으면 좋아했을 별.”' },
+  { id: 'table', name: '마지막 식탁의 기록', x: 712, y: 170, monologue: '영수: “작별도 우리가 함께한 시간이다.”' },
 ];
 
 export const MONTAGE = [
@@ -29,10 +29,13 @@ export const JOURNAL_LINES = [
   '그러므로 내일도 살아갈 것이다.',
 ] as const;
 export const ARCHIVE_DOOR = { x: 850, y: 240 } as const;
+export const ARCHIVE_ROOM_DOOR = { x: 850, y: 270 } as const;
 export const QUARTERS_SPAWN: Point = { x: 480, y: 300 };
+export const ARCHIVE_SPAWN: Point = { x: 140, y: 270 };
+export const ARCHIVE_VISIBLE_FLOOR = { left: 115, top: 120, right: 825, bottom: 451 } as const;
 export const EPILOGUE_MOVE_BOUNDS = {
   corridor: { minX: 155, maxX: 786, minY: 132, maxY: 463 },
-  archive: { minX: 53, maxX: 881, minY: 132, maxY: 463 },
+  archive: { minX: 120, maxX: 794, minY: 162, maxY: 425 },
 } as const;
 
 export function createEpilogue(): EpilogueState {

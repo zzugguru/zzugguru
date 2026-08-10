@@ -25,10 +25,11 @@ Do not delete, skip, or weaken a failing test merely to make a check pass. Repor
 
 For a behavior-changing feature that includes implementation, use the repository skill `$two-agent-harness` in `.agents/skills/two-agent-harness/SKILL.md`.
 
-- Read `BRIEF.md` before implementation and use its active `Developer Request` as the task contract.
+- Run logic and asset work as separate orchestrating sessions. Logic sessions use `BRIEF.md`; asset-generation or asset-integration sessions use `BRIEF_ASSET.md`.
+- Read only the selected lane brief before implementation and use its active `Developer Request` as the task contract. Do not edit the other lane's brief or assigned files.
 - Never edit or delete `Developer Request`, `Developer Decisions`, or `Developer Final Check` unless the user explicitly asks.
 - Write only in the agent-owned `Agent Understanding`, `Agent Questions`, and `Agent Result` sections.
-- If the prompt and `BRIEF.md` conflict or recency is unclear, ask the user to reconcile them before implementation.
+- If the prompt and selected brief conflict or recency is unclear, ask the user to reconcile them before implementation.
 - Keep the total agent count at two: the main implementing agent and one reviewing subagent.
 - Implement first, then delegate a read-only independent review. Do not run concurrent writes.
 - Use `gpt-5.6-terra` with `high` reasoning effort for the reviewing subagent by default.

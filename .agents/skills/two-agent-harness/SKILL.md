@@ -1,11 +1,19 @@
 ---
 name: two-agent-harness
-description: "Implement the active BRIEF.md request and independently verify it with exactly two Codex agents: one main implementing agent and one read-only reviewing subagent. Use for behavior-changing feature development spanning client, server, shared contracts, scenarios, tests, or integrated visual assets when the repository requires a two-agent delivery loop or the user invokes $two-agent-harness."
+description: "Implement the active logic BRIEF.md or asset BRIEF_ASSET.md request and independently verify it with exactly two Codex agents: one main orchestrating agent and one read-only reviewing subagent. Use for behavior-changing feature development or integrated visual assets when the repository requires a two-agent delivery loop or the user invokes $two-agent-harness."
 ---
 
 # Two-Agent Feature Harness
 
-Deliver one coherent feature with a sequential implement-review-fix-verify loop. Keep the total agent count at two: the current main agent and exactly one reviewer subagent. Always create the reviewer with the `gpt-5.6-terra` model and `fork_turns: "none"`; the reviewer must recover its context from `BRIEF.md`, the working-tree diff, and the paths named in the review brief.
+Deliver one coherent feature with a sequential implement-review-fix-verify loop. Keep the total agent count at two within each session: the current main orchestrating agent and exactly one reviewer subagent. Always create the reviewer with the `gpt-5.6-terra` model and `fork_turns: "none"`; the reviewer must recover its context from the selected brief, the working-tree diff, and the paths named in the review brief.
+
+## Select the work lane
+
+- Logic changes use `BRIEF.md`.
+- Asset generation, raster editing, or asset integration use `BRIEF_ASSET.md`.
+- Run the lanes in separate primary sessions. Each primary session orchestrates its own implementation and one read-only reviewer.
+- State the selected brief in the first commentary update and in the reviewer task.
+- Never edit the other lane's brief. Avoid its assigned files; if both lanes need the same file, stop and ask the developer to sequence ownership before editing.
 
 ## Loop limit
 
@@ -18,7 +26,7 @@ Limit every repeated work loop to two iterations per task. This includes impleme
 
 ## 1. Establish the contract
 
-Read `BRIEF.md` first, followed by the applicable `AGENTS.md`, feature code, and tests. Treat the active `Developer Request` and `Developer Decisions` as the task contract. Do not modify developer-owned sections. Summarize the contract in `Agent Understanding` before editing:
+Read the selected lane brief first, followed by the applicable `AGENTS.md`, feature code, and tests. Treat its active `Developer Request` and `Developer Decisions` as the task contract. Do not modify developer-owned sections. Summarize the contract in `Agent Understanding` before editing:
 
 - goal and user-visible outcome;
 - included and excluded scope;
@@ -28,7 +36,7 @@ Read `BRIEF.md` first, followed by the applicable `AGENTS.md`, feature code, and
 
 Ask the user only when a missing choice would materially change behavior or data. Otherwise make a scoped assumption and record it.
 
-If `BRIEF.md` is not in `READY` or `IN_PROGRESS`, lacks a usable goal or completion criteria, or conflicts with the prompt, stop and ask the developer to update or reconcile it. Record material questions in `Agent Questions` and set the status to `NEEDS_INPUT`. The main agent may update status and agent-owned sections only.
+If the selected brief is not in `READY` or `IN_PROGRESS`, lacks a usable goal or completion criteria, or conflicts with the prompt, stop and ask the developer to update or reconcile it. Record material questions in `Agent Questions` and set the status to `NEEDS_INPUT`. The main agent may update status and agent-owned sections only.
 
 ## 2. Inspect the baseline
 
@@ -64,7 +72,7 @@ Fix failures introduced by the change. Record any pre-existing failure with evid
 
 ## 5. Delegate one independent review
 
-Spawn exactly one subagent after the implementation and initial checks are complete. Set `model` to `gpt-5.6-terra` and `fork_turns` to `"none"`. Give it a concrete, bounded, read-only review task. Require it to read the active contract directly from `BRIEF.md`, then pass only the changed scope, relevant paths, and verification commands. Do not pass a suspected answer or ask it to confirm the main agent's conclusions.
+Spawn exactly one subagent after the implementation and initial checks are complete. Set `model` to `gpt-5.6-terra` and `fork_turns` to `"none"`. Give it a concrete, bounded, read-only review task. Require it to read the active contract directly from the selected brief, then pass the selected brief path, changed scope, relevant paths, and verification commands. Do not pass a suspected answer or ask it to confirm the main agent's conclusions.
 
 Use this reviewer brief, adapted to the feature:
 
@@ -72,7 +80,7 @@ Use this reviewer brief, adapted to the feature:
 Act as the independent reviewer for this feature. Do not edit files.
 
 Contract:
-Read the active Developer Request and Developer Decisions in BRIEF.md.
+Read the active Developer Request and Developer Decisions in the selected brief path supplied by the main agent.
 
 Review the current working-tree diff and relevant surrounding code for:
 1. unmet acceptance criteria;
