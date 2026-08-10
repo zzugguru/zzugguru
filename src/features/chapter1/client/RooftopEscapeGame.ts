@@ -10,7 +10,9 @@ import {
   ESCAPE_FLOORS,
   createRooftopEscapeState,
   exitXForFloor,
+  obstaclesForFloor,
   stepRooftopEscape,
+  type EscapeAction,
   type RooftopEscapeState,
 } from '../shared/rooftopEscapeLogic';
 import {
@@ -44,7 +46,10 @@ export class RooftopEscapeGame {
   private lastTimestamp: number | null = null;
   private leftPressed = false;
   private rightPressed = false;
-  private pointerDirection: -1 | 0 | 1 = 0;
+  private crawlPressed = false;
+  private readonly pressedCodes = new Set<string>();
+  private readonly suppressedUntilKeyUp = new Set<string>();
+  private jumpSeconds = 0;
   private playerFacing: HorizontalFacing = 1;
   private monsterFacing: HorizontalFacing = 1;
 
@@ -67,8 +72,6 @@ export class RooftopEscapeGame {
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', this.releaseInput);
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
-    this.canvas.addEventListener('pointerup', this.handlePointerUp);
-    this.canvas.addEventListener('pointercancel', this.handlePointerUp);
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
     this.canvas.setAttribute('aria-label', 'Chapter 01 옥상 탈출 추격 게임');
@@ -82,8 +85,6 @@ export class RooftopEscapeGame {
     window.removeEventListener('keyup', this.handleKeyUp);
     window.removeEventListener('blur', this.releaseInput);
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-    this.canvas.removeEventListener('pointerup', this.handlePointerUp);
-    this.canvas.removeEventListener('pointercancel', this.handlePointerUp);
     if (this.animationId !== null) cancelAnimationFrame(this.animationId);
     this.animationId = null;
     this.releaseInput();
@@ -97,50 +98,70 @@ export class RooftopEscapeGame {
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if ((event.code === 'Enter' || event.code === 'Space') && this.screen !== 'playing') {
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen !== 'playing') {
       event.preventDefault();
       if (!event.repeat) this.startEscape();
       return;
     }
 
     if (this.screen !== 'playing') return;
+    if (this.suppressedUntilKeyUp.has(event.code)) {
+      event.preventDefault();
+      return;
+    }
     if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
       event.preventDefault();
-      this.leftPressed = true;
+      this.pressedCodes.add(event.code);
     }
     if (event.code === 'ArrowRight' || event.code === 'KeyD') {
       event.preventDefault();
-      this.rightPressed = true;
+      this.pressedCodes.add(event.code);
     }
+    if (event.code === 'ArrowUp' || event.code === 'KeyW' || event.code === 'Space') {
+      event.preventDefault();
+      if (!event.repeat) this.jumpSeconds = 0.55;
+    }
+    if (event.code === 'ArrowDown' || event.code === 'KeyS' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+      event.preventDefault();
+      this.pressedCodes.add(event.code);
+    }
+    this.syncHeldInput();
   };
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
-    if (event.code === 'ArrowLeft' || event.code === 'KeyA') this.leftPressed = false;
-    if (event.code === 'ArrowRight' || event.code === 'KeyD') this.rightPressed = false;
+    this.suppressedUntilKeyUp.delete(event.code);
+    this.pressedCodes.delete(event.code);
+    this.syncHeldInput();
   };
 
-  private readonly handlePointerDown = (event: PointerEvent): void => {
+  private syncHeldInput(): void {
+    this.leftPressed = this.pressedCodes.has('ArrowLeft') || this.pressedCodes.has('KeyA');
+    this.rightPressed = this.pressedCodes.has('ArrowRight') || this.pressedCodes.has('KeyD');
+    this.crawlPressed = ['ArrowDown', 'KeyS', 'ShiftLeft', 'ShiftRight'].some((code) => this.pressedCodes.has(code));
+  }
+
+  private readonly handlePointerDown = (): void => {
     this.canvas.focus();
     if (this.screen !== 'playing') {
       this.startEscape();
-      return;
     }
-
-    const rect = this.canvas.getBoundingClientRect();
-    const canvasX = ((event.clientX - rect.left) / rect.width) * this.canvas.width;
-    this.pointerDirection = canvasX < this.canvas.width / 2 ? -1 : 1;
-    this.canvas.setPointerCapture?.(event.pointerId);
-  };
-
-  private readonly handlePointerUp = (): void => {
-    this.pointerDirection = 0;
   };
 
   private readonly releaseInput = (): void => {
     this.leftPressed = false;
     this.rightPressed = false;
-    this.pointerDirection = 0;
+    this.crawlPressed = false;
+    this.pressedCodes.clear();
+    this.suppressedUntilKeyUp.clear();
+    this.jumpSeconds = 0;
   };
+
+  private suppressHeldInputUntilRelease(): void {
+    this.pressedCodes.forEach((code) => this.suppressedUntilKeyUp.add(code));
+    this.pressedCodes.clear();
+    this.syncHeldInput();
+    this.jumpSeconds = 0;
+  }
 
   private startEscape(): void {
     this.state = createRooftopEscapeState();
@@ -164,9 +185,11 @@ export class RooftopEscapeGame {
 
     const previousFloor = this.state.floorIndex;
     const direction = this.direction;
+    this.jumpSeconds = Math.max(0, this.jumpSeconds - Math.max(0, Math.min(0.05, deltaSeconds)));
     this.playerFacing = horizontalFacingForDirection(direction, this.playerFacing);
-    this.state = stepRooftopEscape(this.state, direction, deltaSeconds);
+    this.state = stepRooftopEscape(this.state, { direction, action: this.currentAction }, deltaSeconds);
     if (this.state.floorIndex !== previousFloor) {
+      this.suppressHeldInputUntilRelease();
       this.faceCurrentExit();
       this.announceFloor();
     } else {
@@ -179,7 +202,7 @@ export class RooftopEscapeGame {
     if (this.state.result === 'caught') {
       this.screen = 'caught';
       this.releaseInput();
-      this.liveRegion.textContent = '괴물에게 붙잡혔습니다. Enter 또는 화면 클릭으로 다시 도망치세요.';
+      this.liveRegion.textContent = '괴물에게 붙잡혔습니다. E, Enter 또는 화면 클릭으로 다시 도망치세요.';
     } else if (this.state.result === 'escaped') {
       this.screen = 'escaped';
       this.releaseInput();
@@ -188,9 +211,14 @@ export class RooftopEscapeGame {
   }
 
   private get direction(): -1 | 0 | 1 {
-    if (this.pointerDirection !== 0) return this.pointerDirection;
     if (this.leftPressed === this.rightPressed) return 0;
     return this.leftPressed ? -1 : 1;
+  }
+
+  private get currentAction(): EscapeAction {
+    if (this.jumpSeconds > 0) return 'jump';
+    if (this.crawlPressed) return 'crawl';
+    return 'run';
   }
 
   private announceIntro(): void {
@@ -206,7 +234,12 @@ export class RooftopEscapeGame {
   private announceFloor(): void {
     const floor = ESCAPE_FLOORS[this.state.floorIndex];
     const direction = exitXForFloor(this.state.floorIndex) > this.state.playerX ? '오른쪽' : '왼쪽';
-    this.liveRegion.textContent = `${floor}. ${direction} 계단까지 이동하세요. 괴물이 뒤에서 쫓아옵니다.`;
+    const actionGuide = this.state.floorIndex === 0
+      ? '계속 달리세요.'
+      : this.state.floorIndex === 1
+        ? '장애물은 W, 위쪽 방향키 또는 Space로 점프하세요.'
+        : '낮은 장애물은 점프하고 붉은 배관은 S, 아래쪽 방향키 또는 Shift로 포복하세요.';
+    this.liveRegion.textContent = `${floor}. ${direction} 계단까지 이동하세요. 괴물이 빠르게 쫓아옵니다. ${actionGuide}`;
   }
 
   private render(): void {
@@ -238,8 +271,33 @@ export class RooftopEscapeGame {
     context.fillStyle = `rgb(3 7 18 / ${42 + this.state.floorIndex * 6}%)`;
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawStairDoor(exitXForFloor(this.state.floorIndex));
-    this.drawYeongsu(this.state.playerX, 402, this.playerFacing);
+    obstaclesForFloor(this.state.floorIndex).forEach((obstacle) => this.drawObstacle(obstacle.x, obstacle.kind));
+    const playerFloorY = this.currentAction === 'jump' ? 346 : 402;
+    this.drawYeongsu(this.state.playerX, playerFloorY, this.playerFacing, this.currentAction);
     this.drawMonster(this.state.monsterX, 406, this.monsterFacing);
+  }
+
+  private drawObstacle(x: number, kind: 'jump' | 'crawl'): void {
+    const context = this.context;
+    if (kind === 'jump') {
+      context.fillStyle = 'rgb(55 65 81 / 96%)';
+      context.fillRect(x - 26, 354, 52, 48);
+      context.strokeStyle = COLORS.feedback;
+      context.strokeRect(x - 26, 354, 52, 48);
+      context.fillStyle = COLORS.text;
+      context.textAlign = 'center';
+      context.font = '700 12px monospace';
+      context.fillText('JUMP', x, 382);
+      return;
+    }
+    context.fillStyle = 'rgb(251 113 133 / 82%)';
+    context.fillRect(x - 38, 278, 76, 18);
+    context.fillRect(x - 34, 296, 8, 66);
+    context.fillRect(x + 26, 296, 8, 66);
+    context.fillStyle = COLORS.text;
+    context.textAlign = 'center';
+    context.font = '700 11px monospace';
+    context.fillText('CRAWL', x, 324);
   }
 
   private drawStairDoor(x: number): void {
@@ -266,12 +324,13 @@ export class RooftopEscapeGame {
     x: number,
     floorY: number,
     facing: HorizontalFacing,
+    action: EscapeAction = 'run',
   ): void {
     const context = this.context;
-    const geometry = getEscapeYeongsuGeometry(floorY);
+    const geometry = getEscapeYeongsuGeometry(0);
     context.save();
-    context.translate(x, 0);
-    context.scale(facing, 1);
+    context.translate(x, floorY);
+    context.scale(facing, action === 'crawl' ? 0.62 : 1);
     if (this.playerImage?.complete && this.playerImage.naturalWidth > 0) {
       context.imageSmoothingEnabled = false;
       context.drawImage(
@@ -288,7 +347,7 @@ export class RooftopEscapeGame {
     } else {
       context.fillStyle = COLORS.primary;
       context.beginPath();
-      context.ellipse(0, floorY - 68, 28, 68, 0, 0, Math.PI * 2);
+      context.ellipse(0, -68, 28, 68, 0, 0, Math.PI * 2);
       context.fill();
     }
     context.restore();
@@ -330,29 +389,12 @@ export class RooftopEscapeGame {
     context.textAlign = 'right';
     context.fillStyle = COLORS.muted;
     context.font = '13px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText('A / D · ← / → · 화면 좌우', 936, 30);
+    context.fillText('A/D 이동 · W/↑/Space 점프 · S/↓/Shift 포복', 936, 30);
     context.fillStyle = COLORS.border;
     context.fillRect(720, 44, 216, 8);
     context.fillStyle = COLORS.feedback;
     context.fillRect(720, 44, 216 * ((this.state.floorIndex + 1) / ESCAPE_FLOORS.length), 8);
 
-    this.drawTouchControl(18, 468, 220, '◀', '왼쪽으로 달리기');
-    this.drawTouchControl(722, 468, 220, '▶', '오른쪽으로 달리기');
-  }
-
-  private drawTouchControl(x: number, y: number, width: number, key: string, label: string): void {
-    const context = this.context;
-    context.fillStyle = 'rgb(17 24 39 / 94%)';
-    context.fillRect(x, y, width, 52);
-    context.strokeStyle = COLORS.border;
-    context.strokeRect(x, y, width, 52);
-    context.textAlign = 'center';
-    context.fillStyle = COLORS.feedback;
-    context.font = '700 18px monospace';
-    context.fillText(key, x + 28, y + 32);
-    context.fillStyle = COLORS.text;
-    context.font = '13px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText(label, x + 126, y + 32);
   }
 
   private drawIntro(): void {
@@ -380,7 +422,7 @@ export class RooftopEscapeGame {
     context.strokeRect(306, 346, 348, 58);
     context.fillStyle = COLORS.text;
     context.font = '700 16px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText('ENTER 또는 클릭하여 도망치기', 480, 381);
+    context.fillText('E · ENTER 또는 클릭하여 도망치기', 480, 381);
   }
 
   private drawRooftop(): void {
@@ -422,6 +464,6 @@ export class RooftopEscapeGame {
     );
     context.fillStyle = COLORS.muted;
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText('ENTER 또는 클릭 · 처음부터 다시', 480, 337);
+    context.fillText('E · ENTER 또는 클릭 · 처음부터 다시', 480, 337);
   }
 }

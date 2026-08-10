@@ -6,6 +6,7 @@ import {
   CHAPTER01_BACKGROUNDS,
   CHAPTER01_IDENTITY_SOURCE,
   CHAPTER01_SPRITES,
+  CHAPTER01_STORY_BACKGROUNDS,
   CHAPTER01_TOPVIEW_BACKGROUNDS,
   CHAPTER01_TOPVIEW_SPRITE,
 } from './chapter01Assets';
@@ -144,6 +145,12 @@ describe('Chapter 01 raster assets', () => {
     for (const asset of Object.values(CHAPTER01_TOPVIEW_BACKGROUNDS)) {
       const { header } = readPngChunks(readFileSync(resolve(asset.path)));
       expect([header.width, header.height]).toEqual([asset.width, asset.height]);
+      expect([header.bitDepth, header.colorType, header.compression, header.filter, header.interlace]).toEqual([8, 2, 0, 0, 0]);
+    }
+
+    for (const asset of Object.values(CHAPTER01_STORY_BACKGROUNDS)) {
+      const { header } = readPngChunks(readFileSync(resolve(asset.path)));
+      expect([header.width, header.height]).toEqual([960, 540]);
       expect([header.bitDepth, header.colorType, header.compression, header.filter, header.interlace]).toEqual([8, 2, 0, 0, 0]);
     }
   });

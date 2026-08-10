@@ -2,6 +2,9 @@ import yeongsuIdentityUrl from '../../../assets/yeongsu-guard.png';
 import apartmentStairwellUrl from '../assets/chapter01-apartment-stairwell.png';
 import cctvWallBackgroundUrl from '../assets/chapter01-cctv-wall.png';
 import guardRoomBackgroundUrl from '../assets/chapter01-guard-room.png';
+import cctvAnomalyBackgroundUrl from '../assets/chapter01-story-cctv-anomaly.png';
+import guardRoomHauntingBackgroundUrl from '../assets/chapter01-story-guard-room-haunting.png';
+import whiteoutApparitionBackgroundUrl from '../assets/chapter01-story-whiteout-apparition.png';
 import topViewBasementUrl from '../assets/chapter01-topview-basement.png';
 import topViewGuardRoomUrl from '../assets/chapter01-topview-guard-room.png';
 import topViewGuardSpriteUrl from '../../../assets/chapter01-yeongsu-guard-sprites.png';
@@ -25,6 +28,11 @@ import {
   type Chapter01StoryBeat,
 } from '../shared/chapter01Story';
 import { getCoverRasterGeometry } from '../shared/chapter01Assets';
+import {
+  chapter01StorySceneFor,
+  type Chapter01StoryPlate,
+  type Chapter01StoryScene,
+} from '../shared/chapter01StoryScenes';
 import { drawChapter01TopViewSprite } from './chapter01TopViewSprite';
 import { getChapter01WhiteoutPresentation } from './chapter01Whiteout';
 
@@ -56,6 +64,9 @@ export class Chapter1StoryGame {
   private readonly titleImage: HTMLImageElement | null;
   private readonly guardRoomImage: HTMLImageElement | null;
   private readonly cctvWallImage: HTMLImageElement | null;
+  private readonly cctvAnomalyImage: HTMLImageElement | null;
+  private readonly guardRoomHauntingImage: HTMLImageElement | null;
+  private readonly whiteoutApparitionImage: HTMLImageElement | null;
   private readonly basementImage: HTMLImageElement | null;
   private readonly topViewGuardRoomImage: HTMLImageElement | null;
   private readonly topViewBasementImage: HTMLImageElement | null;
@@ -85,6 +96,9 @@ export class Chapter1StoryGame {
     this.titleImage = this.createImage(yeongsuIdentityUrl);
     this.guardRoomImage = this.createImage(guardRoomBackgroundUrl);
     this.cctvWallImage = this.createImage(cctvWallBackgroundUrl);
+    this.cctvAnomalyImage = this.createImage(cctvAnomalyBackgroundUrl);
+    this.guardRoomHauntingImage = this.createImage(guardRoomHauntingBackgroundUrl);
+    this.whiteoutApparitionImage = this.createImage(whiteoutApparitionBackgroundUrl);
     this.basementImage = this.createImage(apartmentStairwellUrl);
     this.topViewGuardRoomImage = this.createImage(topViewGuardRoomUrl);
     this.topViewBasementImage = this.createImage(topViewBasementUrl);
@@ -138,7 +152,7 @@ export class Chapter1StoryGame {
       this.pointerTarget = null;
       return;
     }
-    if (!['KeyZ', 'Enter'].includes(event.code) || event.repeat) return;
+    if (!['KeyE', 'Enter'].includes(event.code) || event.repeat) return;
     event.preventDefault();
     if (this.complete) return;
     const advanced = this.advance();
@@ -220,7 +234,7 @@ export class Chapter1StoryGame {
     const exploration = this.activeExploration;
     if (exploration && !this.complete) {
       this.liveRegion.textContent = this.explorationComplete
-        ? `${content} 목표 완료. Z 또는 Enter로 계속하세요.`
+        ? `${content} 목표 완료. E 또는 Enter로 계속하세요.`
         : `${content} ${exploration.objective} 방향키, WASD 또는 화면 클릭으로 이동합니다.`;
       return;
     }
@@ -302,7 +316,7 @@ export class Chapter1StoryGame {
 
     if (reached) {
       this.explorationsAtTarget.add(exploration.beatIndex);
-      this.liveRegion.textContent = `목표에 도착했습니다. ${exploration.interactLabel}: Z, Enter 또는 클릭으로 상호작용하세요.`;
+      this.liveRegion.textContent = `목표에 도착했습니다. ${exploration.interactLabel}: E, Enter 또는 클릭으로 상호작용하세요.`;
       return;
     }
 
@@ -327,7 +341,9 @@ export class Chapter1StoryGame {
 
   private render(): void {
     const beat = CHAPTER01_STORY[this.currentIndex];
-    this.drawBackdrop(beat);
+    const scene = chapter01StorySceneFor(this.currentIndex, beat.backdrop);
+    this.drawBackdrop(beat, scene);
+    if (scene) this.drawStorySceneTreatment(scene);
     this.drawHeader(beat);
     if (beat.backdrop === 'whiteout' && this.currentIndex >= 40) this.drawWhiteoutInterference();
 
@@ -360,11 +376,13 @@ export class Chapter1StoryGame {
     this.context.restore();
   }
 
-  private drawBackdrop(beat: Chapter01StoryBeat): void {
+  private drawBackdrop(beat: Chapter01StoryBeat, scene: Chapter01StoryScene | null): void {
     const context = this.context;
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.fillStyle = COLORS.background;
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    if (scene && this.drawStoryPlate(scene.plate)) return;
 
     if (beat.backdrop === 'basement') this.drawTopViewBasement();
     else if (beat.backdrop === 'cctv' || beat.backdrop === 'epilogue') this.drawCctvWall(beat.backdrop);
@@ -372,6 +390,68 @@ export class Chapter1StoryGame {
     else if (beat.backdrop === 'morning') this.drawGuardRoom(true);
     else if (beat.backdrop === 'guard-room') this.drawTopViewGuardRoom();
     else this.drawTitleBackdrop();
+  }
+
+  private drawStoryPlate(plate: Chapter01StoryPlate): boolean {
+    if (plate === 'current') return false;
+    if (plate === 'guard-room') {
+      this.drawGuardRoom(false);
+      return true;
+    }
+    if (plate === 'basement') {
+      this.drawBasement();
+      return true;
+    }
+    const image = plate === 'cctv-anomaly'
+      ? this.cctvAnomalyImage
+      : plate === 'guard-room-haunting'
+        ? this.guardRoomHauntingImage
+        : this.whiteoutApparitionImage;
+    if (!this.drawLoadedBackground(image)) return false;
+    if (plate === 'whiteout-apparition') this.drawWhiteoutForeground();
+    return true;
+  }
+
+  private drawStorySceneTreatment(scene: Chapter01StoryScene): void {
+    const context = this.context;
+    context.save();
+    context.beginPath();
+    context.rect(0, 0, this.canvas.width, PANEL.y);
+    context.clip();
+
+    context.globalAlpha = scene.tintAlpha;
+    context.fillStyle = scene.page % 2 === 0 ? COLORS.surfaceAccent : COLORS.danger;
+    context.fillRect(0, 0, this.canvas.width, PANEL.y);
+
+    context.globalAlpha = scene.scanlineAlpha;
+    context.fillStyle = COLORS.text;
+    for (let y = scene.page % 7; y < PANEL.y; y += 11) context.fillRect(0, y, this.canvas.width, 1);
+
+    context.globalAlpha = 0.2 + (scene.page % 4) * 0.05;
+    context.strokeStyle = scene.page % 2 === 0 ? COLORS.feedback : COLORS.danger;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(scene.focusX, scene.focusY, 18 + (scene.page % 5) * 7, 0, Math.PI * 2);
+    context.stroke();
+
+    if (scene.scanlineAlpha >= 0.06) {
+      context.globalAlpha = 0.12 + (scene.page % 3) * 0.04;
+      context.fillStyle = COLORS.text;
+      context.fillRect((scene.page * 41) % 180 - 60, scene.signalTearY, 840, 3 + (scene.page % 4));
+    }
+
+    if (scene.silhouette) {
+      const x = 140 + ((scene.page * 97) % 650);
+      context.globalAlpha = 0.22 + (scene.page % 3) * 0.08;
+      context.fillStyle = COLORS.background;
+      context.beginPath();
+      context.ellipse(x, 250, 15, 48, 0, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(x, 190, 14, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.restore();
   }
 
   private drawTopViewGuardRoom(): void {
@@ -606,6 +686,12 @@ export class Chapter1StoryGame {
       this.context.restore();
     }
 
+    this.drawWhiteoutForeground();
+  }
+
+  private drawWhiteoutForeground(): void {
+    const presentation = getChapter01WhiteoutPresentation(this.currentIndex, this.animationSeconds);
+    const phase = presentation.phase;
     const exploration = this.activeExploration;
     if (exploration?.scene === 'whiteout') this.drawExplorationTarget(exploration);
 
@@ -672,7 +758,7 @@ export class Chapter1StoryGame {
     context.fillText('새벽 3시 33분', 480, 242);
     context.fillStyle = COLORS.muted;
     context.font = '20px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText('Z · Enter · 화면 클릭으로 시작', 480, 304);
+    context.fillText('E · Enter · 화면 클릭으로 시작', 480, 304);
   }
 
   private drawStoryPanel(beat: Chapter01StoryBeat): void {
@@ -701,13 +787,13 @@ export class Chapter1StoryGame {
     const exploration = this.activeExploration;
     const footer = exploration
       ? this.explorationComplete
-        ? '목표 완료 · Z / Enter / 클릭  ▶ 다음'
+        ? '목표 완료 · E / Enter / 클릭  ▶ 다음'
         : isExplorationTargetReached(this.playerPosition, exploration)
-          ? `Z / Enter / 아래 패널 클릭 · ${exploration.interactLabel}`
+          ? `E / Enter / 아래 패널 클릭 · ${exploration.interactLabel}`
           : `방향키 / WASD / 화면 클릭 · ${exploration.objective}`
       : this.complete
         ? 'CHAPTER 01 · 끝'
-        : 'Z · Enter · 클릭  ▶ 다음';
+        : 'E · Enter · 클릭  ▶ 다음';
     context.fillStyle = exploration && !this.explorationComplete ? COLORS.feedback : this.complete ? COLORS.danger : COLORS.muted;
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
     context.fillText(footer, PANEL.x + PANEL.width - 20, PANEL.y + PANEL.height - 16);

@@ -10,6 +10,35 @@
 
 ## Developer Request
 
+### Active Request — Chapter 1 story scene variants (supersedes the older request below)
+
+#### Task
+
+Create and integrate Chapter 1 story scene assets so eligible pages visibly change with the text while consecutive pages in the same place share a coherent base scene.
+
+#### Included Scope
+
+- Treat the upper-right counter as 1-based pages 1–49.
+- Preserve the existing presentation on excluded pages 3, 11, 16, 31, 33, 34, and 43–49.
+- For every other page, select a text-appropriate location plate and apply a distinct page variant using character presence, prop focus, light level, CCTV noise, silhouette exposure, or supernatural interference.
+- Reuse coherent base plates for guard room, CCTV surveillance, basement search, guard-room haunting, whiteout apparition, morning aftermath, and final CCTV loop.
+- Keep the dialogue panel readable, retain exploration gameplay layers/fallbacks, and preload all integrated images.
+- Add page mapping, raster metadata/file checks, renderer selection checks, excluded-page checks, and build inclusion tests.
+
+#### Excluded Scope
+
+- Further changes to Chapter 1 controls or escape gameplay.
+- Any Chapter 2 or Chapter 3 code or asset changes.
+- Changes to story text, page order, excluded-page list, or accessibility controls.
+
+#### Done When
+
+- All 36 eligible pages have a deterministic scene variant and all 13 excluded pages retain their prior backdrop behavior.
+- Shared location plates remain visually coherent while adjacent eligible pages visibly differ.
+- New assets are 960×540 PNGs with no text/watermark and render behind the existing dialogue panel.
+- Loading failure preserves the existing procedural/top-view fallback.
+- Typecheck, all tests, build, diff check, and one independent Terra asset review pass.
+
 > 개발자 소유 영역입니다. 에이전트는 명시적인 요청 없이 수정하거나 삭제하지 않습니다.
 
 ### Task
@@ -63,11 +92,15 @@ Chapter 3 가족 구출 단계를 기존 우주선 연구실 배경으로 전환
 
 ## Agent Understanding
 
+The active Chapter 1 asset request uses a small set of coherent 960×540 story plates rather than 36 unrelated images. A deterministic 1-based page map will combine each plate with per-page lighting, focus, scanline, silhouette, and interference parameters so every eligible page changes while excluded pages preserve the current renderer. Chapter 2/3 and the completed control/escape logic are out of scope.
+
 > 메인 에이전트 소유 영역입니다. 구현 전에 이해한 목표, 범위와 완료 조건을 기록합니다.
 
 `BRIEF_ASSET.md` 자산 lane에서 외계 아버지·어머니·누나의 64×80 투명 탑뷰 픽셀 아트 NPC를 생성한다. 영수보다 실제로 연장자지만 인간 기준 50대 후반처럼 보이는 부모와 40대 후반 누나로 설정하며, 공유된 절제된 외계 특징과 네이비·회색 스마트 캐주얼로 혈연성과 단정한 인상을 만든다. 구출 단계는 기존 우주선 연구실 배경과 충돌 맵으로 전환하고 영수와 세 가족을 열린 바닥에 재배치한다. 발 기준선 렌더링, 실패 fallback, 실제 알파 경계, 맵·충돌·상호작용 도달성을 검증한다.
 
 ## Agent Questions
+
+Resolved 2026-08-10: the developer approved shared location backgrounds with per-page scene variations instead of a unique standalone image for every eligible page.
 
 > 메인 에이전트 소유 영역입니다. 개발자의 판단이 필요한 질문과 확인 상태를 기록합니다.
 
@@ -90,6 +123,16 @@ Chapter 3 가족 구출 단계를 기존 우주선 연구실 배경으로 전환
 - 2026-08-10: 재구성 가족은 우주복·제복이 아닌 평상복을 입는다. 큰아들은 12–14세, 작은딸은 7–9세로 처음 생성안보다 어리게 표현한다.
 
 ## Agent Result
+
+### Active Chapter 1 scene-variant result (2026-08-10)
+
+- Added three coherent 960x540 RGB story plates for CCTV anomaly, guard-room haunting, and whiteout apparition, while reusing the existing guard-room and basement plates.
+- Added a deterministic 1-based scene map covering all 36 eligible pages; pages 3, 11, 16, 31, 33, 34, and 43-49 retain the prior renderer.
+- Added per-page tint, focus, scanline, signal-tear, and silhouette treatments clipped above the dialogue panel, with existing image-load fallbacks preserved.
+- Added raster metadata, exact exclusion/count, renderer-selection, and fallback-facing regression coverage.
+- Browser-checked Chapter 1 entry, E/Enter/click guidance, page counter, and page 2 top-view exploration; corrected the remaining stale Z label in `src/main.ts`.
+- Validation passed: typecheck; 63 test files / 285 tests; production build; `git diff --check` (line-ending warnings only).
+- Independent Terra review passed after addressing its P2/P3 findings: the escape-control label now matches movement/jump/crawl/restart behavior, and tests now cover distinct treatment tuples plus all generated-plate load-failure fallbacks.
 
 > 메인 에이전트 소유 영역입니다. 구현 결과, 검사 결과, 리뷰 대응과 남은 위험을 기록합니다.
 

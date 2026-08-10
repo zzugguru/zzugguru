@@ -8,6 +8,35 @@
 
 ## Developer Request
 
+### Active Request — Chapter 1 controls and escape stages (supersedes the older request below)
+
+#### Task
+
+Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign the final escape into progressively harder stages.
+
+#### Included Scope
+
+- Story exploration: Arrow keys/WASD for movement and E/Enter for interaction or dialogue advance.
+- Remove Z as a Chapter 1 story action key and update visible/live-region guidance.
+- Rooftop escape: Arrow keys/WASD for movement, E/Enter for start/retry, Space for jump, and Shift/KeyS/ArrowDown for crawl where a stage requires it.
+- Increase monster pursuit speed while preserving a fair floor-entry grace period.
+- Stage 1: basic pursuit; Stage 2: jump obstacles; Stage 3: jump and crawl obstacles.
+- Add visual obstacle/action feedback and regression tests for success, missed actions, capture, stage transitions, and input cleanup.
+
+#### Excluded Scope
+
+- Any modification to Chapter 2 or Chapter 3 code, assets, controls, or gameplay.
+- Story scene asset generation and per-page asset mapping; those belong to a later `BRIEF_ASSET.md` session.
+- Rhythm-game restoration or unrelated Chapter 1 refactors.
+
+#### Done When
+
+- Chapter 1 story guidance and input accept E/Enter and no longer advertise or accept Z.
+- Escape Stage 2 cannot pass its obstacle without a timed jump.
+- Escape Stage 3 requires both jump and crawl actions at distinct obstacles.
+- The faster monster remains avoidable on a valid-action route and catches a player who misses required actions.
+- Typecheck, all tests, build, diff check, and one independent Terra review pass.
+
 ### Task
 
 Chapter 3 하단 마우스 이동·상호작용 인터페이스 제거
@@ -53,6 +82,12 @@ Chapter 3 게임 하단에 표시되는 방향 버튼과 상호작용 버튼을 
 
 ## Agent Questions
 
+- 2026-08-10: Developer approved a new bounded run to resolve the held-key OS repeat edge case across floor transitions.
+
+- 2026-08-10: After two bounded review-fix iterations, one P2 remains: an OS repeat keydown from a direction/crawl key physically held across a floor transition can reactivate stale movement. The next fix needs a suppressed-until-keyup set plus a repeat-event regression test. Developer approval is required to start another bounded run.
+
+- 2026-08-10: The active Developer Request still targets removal of Chapter 3 mouse controls, while the current user request targets Chapter 1 control parity and a three-stage escape redesign. Please replace or reconcile the developer-owned request and acceptance criteria before implementation.
+
 > 메인 에이전트 소유 영역입니다. 개발자의 판단이 필요한 질문과 확인 상태를 기록합니다.
 
 없음. “01·41·42 화면”은 헤더에 표시되는 1-based 스토리 화면 번호로 해석한다. 01번 배경은 새 래스터를 만들지 않고 이미 승인된 공통 영수 야간 경비 그림을 초점 보존 cover로 사용한다. “오브젝트 위”는 탐색이 실제로 가능한 경비실 02번과 지하 11번 탑뷰 장면의 책상·의자·수납장·벽·계단 같은 비보행 영역을 의미하며, 목표는 오브젝트 앞의 접근 가능한 바닥으로 조정한다.
@@ -63,6 +98,12 @@ Chapter 3 게임 하단에 표시되는 방향 버튼과 상호작용 버튼을 
 - 2026-08-10: Chapter 3 하단 방향·상호작용 버튼은 제거하되 키보드와 나머지 진행 버튼은 유지한다.
 
 ## Agent Result
+
+- Completed the active Chapter 1 logic request. Story movement remains Arrow/WASD and interaction/advance now uses E/Enter instead of Z, with matching canvas and live-region guidance. The escape is three progressive stages: 1F pursuit, 2F jump, 3F jump plus crawl. Monster speed is 158 + 18 per stage; wrong actions block passage and cause a 0.62s stumble, while a tested 60Hz correct-action route remains winnable. Start/retry uses E/Enter, pointer movement was removed, and held aliases plus OS repeat across transitions are safely managed until keyup. Chapter 2/3 were not changed by this task. Checks passed: typecheck, focused 23 tests, full 62 files/281 tests, build, diff check. Independent review findings for restart guidance, multi-key aliases, transition cleanup, and OS repeat suppression were fixed and reverified with no remaining findings. Residual: browser play-feel and OS-specific repeat timing were not manually exercised.
+
+- Blocked after the two-iteration limit: implementation and required checks pass, and the original restart-announcement, multi-key alias, and immediate transition cleanup findings were fixed. One repeat-key transition edge case remains as documented in Agent Questions; do not treat this logic lane as complete yet.
+
+- In review: Chapter 1 story input now uses E/Enter instead of Z. The final escape has three stages (basic pursuit, jump, jump+crawl), a faster monster, missed-action stumble penalties, keyboard-only movement/action play, visual obstacle cues, and focused route/boundary tests. Chapter 2 and Chapter 3 files were not modified by this task. Required checks passed before independent review: typecheck, 62 test files/281 tests, build, and diff check.
 
 > 메인 에이전트 소유 영역입니다. 구현 결과, 검사 결과, 리뷰 대응과 남은 위험을 기록합니다.
 
