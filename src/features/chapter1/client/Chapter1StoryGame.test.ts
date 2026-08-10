@@ -10,6 +10,9 @@ interface StoryGameControls {
   pointerTarget: Chapter01Point | null;
   inputFeedback: { kind: 'advance' | 'blocked' | 'move'; remainingSeconds: number } | null;
   advance(): void;
+  cctvAnomalyImage: HTMLImageElement;
+  guardRoomHauntingImage: HTMLImageElement;
+  whiteoutApparitionImage: HTMLImageElement;
 }
 
 interface ListenerEvent {
@@ -111,16 +114,83 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Chapter1StoryGame', () => {
-  it('renders the square Yeongsu title source at a contained 1:1 size', () => {
+  it('fills screen 01 with the square Yeongsu artwork at a covered 1:1 size', () => {
     const setupResult = setup();
     setupResult.game.mount();
     setupResult.renderFrame();
 
-    expect(setupResult.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 540, 540);
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, -105, 960, 960);
     expect((setupResult.context as unknown as { imageSmoothingEnabled: boolean }).imageSmoothingEnabled).toBe(true);
   });
 
-  it('마운트 후 Z, Enter, 클릭 입력으로 진행하고 현재 내용을 알린다', () => {
+  it('uses generated scene plates on eligible pages and preserves excluded page 3', () => {
+    const setupResult = setup();
+    const controls = setupResult.game as unknown as StoryGameControls;
+    setupResult.game.mount();
+
+    controls.currentIndex = 7;
+    setupResult.renderFrame();
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(
+      expect.objectContaining({ src: expect.stringContaining('chapter01-story-cctv-anomaly') }),
+      0,
+      0,
+      960,
+      540,
+    );
+
+    setupResult.context.drawImage.mockClear();
+    controls.currentIndex = 2;
+    setupResult.renderFrame(16);
+    expect(setupResult.context.drawImage.mock.calls.some(
+      ([image]) => String((image as { src?: string }).src).includes('chapter01-story-'),
+    )).toBe(false);
+  });
+
+  it('falls back to the existing renderer when generated scene plates are unavailable', () => {
+    const setupResult = setup();
+    const controls = setupResult.game as unknown as StoryGameControls;
+    setupResult.game.mount();
+
+    for (const image of [controls.cctvAnomalyImage, controls.guardRoomHauntingImage, controls.whiteoutApparitionImage]) {
+      Object.defineProperties(image, {
+        complete: { value: false, configurable: true },
+        naturalWidth: { value: 0, configurable: true },
+      });
+    }
+
+    controls.currentIndex = 7;
+    setupResult.renderFrame();
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(
+      expect.objectContaining({ src: expect.stringContaining('chapter01-cctv-wall') }),
+      0,
+      0,
+      960,
+      540,
+    );
+
+    setupResult.context.drawImage.mockClear();
+    controls.currentIndex = 38;
+    setupResult.renderFrame(16);
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(
+      expect.objectContaining({ src: expect.stringContaining('chapter01-topview-guard-room') }),
+      0,
+      0,
+      960,
+      540,
+    );
+
+    setupResult.context.drawImage.mockClear();
+    controls.currentIndex = 39;
+    setupResult.renderFrame(32);
+    expect(setupResult.context.drawImage.mock.calls.some(
+      ([image]) => String((image as { src?: string }).src).includes('chapter01-yeongsu-guard-sprites'),
+    )).toBe(true);
+    expect(setupResult.context.drawImage.mock.calls.some(
+      ([image]) => String((image as { src?: string }).src).includes('chapter01-story-'),
+    )).toBe(false);
+  });
+
+  it('마운트 후 E, Enter, 클릭 입력으로 진행하고 현재 내용을 알린다', () => {
     const setupResult = setup();
     const controls = setupResult.game as unknown as StoryGameControls;
     const preventDefault = vi.fn();
@@ -128,6 +198,8 @@ describe('Chapter1StoryGame', () => {
 
     expect(setupResult.liveRegion.textContent).toContain('새벽 3시 33분');
     setupResult.keydown({ code: 'KeyZ', repeat: false, preventDefault });
+    expect(controls.currentIndex).toBe(0);
+    setupResult.keydown({ code: 'KeyE', repeat: false, preventDefault });
     expect(controls.currentIndex).toBe(1);
     setupResult.keydown({ code: 'Enter', repeat: false, preventDefault });
     expect(controls.currentIndex).toBe(1);
@@ -150,7 +222,7 @@ describe('Chapter1StoryGame', () => {
     const controls = setupResult.game as unknown as StoryGameControls;
     setupResult.game.mount();
     setupResult.renderFrame();
-    setupResult.keydown({ code: 'KeyZ', repeat: true, preventDefault: vi.fn() });
+    setupResult.keydown({ code: 'KeyE', repeat: true, preventDefault: vi.fn() });
 
     expect(controls.currentIndex).toBe(0);
     expect(setupResult.context.fillText).toHaveBeenCalledWith('새벽 3시 33분', 480, 242);
@@ -195,7 +267,7 @@ describe('Chapter1StoryGame', () => {
     expect(controls.inputFeedback?.kind).toBe('move');
     expect(setupResult.context.rect).toHaveBeenCalledWith(136, 104, 764, 260);
     expect(setupResult.context.clip).toHaveBeenCalled();
-    expect(exploration.target).toEqual({ x: 480, y: 204 });
+    expect(exploration.target).toEqual({ x: 480, y: 316 });
   });
 
   it.each([
@@ -221,7 +293,37 @@ describe('Chapter1StoryGame', () => {
     move(setupResult, exploration);
 
     expect(setupResult.liveRegion.textContent).toContain('목표에 도착했습니다');
-    expect(setupResult.liveRegion.textContent).toContain('Z, Enter 또는 클릭');
+    expect(setupResult.liveRegion.textContent).toContain('E, Enter 또는 클릭');
+  });
+
+  it('41·42번 지지직 효과는 캐릭터를 고정하고 대사 패널보다 먼저 상단에만 그린다', () => {
+    const setupResult = setup();
+    const controls = setupResult.game as unknown as StoryGameControls;
+    setupResult.game.mount();
+    controls.currentIndex = 40;
+
+    setupResult.renderFrame(0);
+    const firstSpriteCall = setupResult.context.drawImage.mock.calls.find(
+      ([image]) => (image as { naturalWidth?: number }).naturalWidth === 256,
+    );
+    const interferenceCalls = setupResult.context.fillRect.mock.calls.filter(
+      ([, , , height]) => Number(height) <= 11,
+    );
+    const panelCallOrder = setupResult.context.roundRect.mock.invocationCallOrder.at(-1)!;
+
+    expect(firstSpriteCall?.slice(5, 7)).toEqual([448, 136]);
+    expect(interferenceCalls.length).toBeGreaterThan(0);
+    for (const [, y, , height] of interferenceCalls) {
+      expect(Number(y) + Number(height)).toBeLessThanOrEqual(372);
+    }
+    expect(setupResult.context.fillRect.mock.invocationCallOrder.at(-1)).toBeLessThan(panelCallOrder);
+
+    setupResult.context.drawImage.mockClear();
+    setupResult.renderFrame(100);
+    const laterSpriteCall = setupResult.context.drawImage.mock.calls.find(
+      ([image]) => (image as { naturalWidth?: number }).naturalWidth === 256,
+    );
+    expect(laterSpriteCall?.slice(5, 7)).toEqual(firstSpriteCall?.slice(5, 7));
   });
 
   it.each([

@@ -8,6 +8,35 @@
 
 ## Developer Request
 
+### Active Request — Chapter 1 controls and escape stages (supersedes the older request below)
+
+#### Task
+
+Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign the final escape into progressively harder stages.
+
+#### Included Scope
+
+- Story exploration: Arrow keys/WASD for movement and E/Enter for interaction or dialogue advance.
+- Remove Z as a Chapter 1 story action key and update visible/live-region guidance.
+- Rooftop escape: Arrow keys/WASD for movement, E/Enter for start/retry, Space for jump, and Shift/KeyS/ArrowDown for crawl where a stage requires it.
+- Increase monster pursuit speed while preserving a fair floor-entry grace period.
+- Stage 1: basic pursuit; Stage 2: jump obstacles; Stage 3: jump and crawl obstacles.
+- Add visual obstacle/action feedback and regression tests for success, missed actions, capture, stage transitions, and input cleanup.
+
+#### Excluded Scope
+
+- Any modification to Chapter 2 or Chapter 3 code, assets, controls, or gameplay.
+- Story scene asset generation and per-page asset mapping; those belong to a later `BRIEF_ASSET.md` session.
+- Rhythm-game restoration or unrelated Chapter 1 refactors.
+
+#### Done When
+
+- Chapter 1 story guidance and input accept E/Enter and no longer advertise or accept Z.
+- Escape Stage 2 cannot pass its obstacle without a timed jump.
+- Escape Stage 3 requires both jump and crawl actions at distinct obstacles.
+- The faster monster remains avoidable on a valid-action route and catches a player who misses required actions.
+- Typecheck, all tests, build, diff check, and one independent Terra review pass.
+
 ### Task
 
 Chapter 2 CCTV 채널 진행과 2D 화면 연출 개발

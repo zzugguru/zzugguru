@@ -7,6 +7,7 @@ import {
   CHAPTER01_TOPVIEW_BACKGROUNDS,
   CHAPTER01_TOPVIEW_SPRITE,
   getContainedRasterGeometry,
+  getCoverRasterGeometry,
   getSpriteDrawGeometry,
 } from './chapter01Assets';
 
@@ -81,6 +82,15 @@ describe('Chapter 01 asset layout metadata', () => {
     expect(geometry.width / geometry.height).toBe(CHAPTER01_IDENTITY_SOURCE.width / CHAPTER01_IDENTITY_SOURCE.height);
     expect(geometry.x + geometry.width).toBeLessThanOrEqual(CHAPTER01_CANVAS.width);
     expect(geometry.y + geometry.height).toBeLessThanOrEqual(CHAPTER01_CANVAS.height);
+  });
+
+  it('covers the 16:9 title canvas with the square identity artwork without stretching it', () => {
+    const geometry = getCoverRasterGeometry(1024, 1024, 960, 540, 0.5, 0.25);
+
+    expect(geometry).toEqual({ x: 0, y: -105, width: 960, height: 960, scale: 0.9375 });
+    expect(geometry.width).toBeGreaterThanOrEqual(CHAPTER01_CANVAS.width);
+    expect(geometry.height).toBeGreaterThanOrEqual(CHAPTER01_CANVAS.height);
+    expect(geometry.width / geometry.height).toBe(1);
   });
 
   it('keeps native 960x540 top-view maps and a four-cell 256x80 guard sheet', () => {

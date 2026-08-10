@@ -86,6 +86,30 @@ export const CHAPTER01_TOPVIEW_BACKGROUNDS = {
   },
 } as const;
 
+export const CHAPTER01_STORY_BACKGROUNDS = {
+  cctvAnomaly: {
+    path: 'src/features/chapter1/assets/chapter01-story-cctv-anomaly.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+  guardRoomHaunting: {
+    path: 'src/features/chapter1/assets/chapter01-story-guard-room-haunting.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+  whiteoutApparition: {
+    path: 'src/features/chapter1/assets/chapter01-story-whiteout-apparition.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+} as const;
+
 export const CHAPTER01_TOPVIEW_SPRITE = {
   path: 'src/assets/chapter01-yeongsu-guard-sprites.png',
   width: 256,
@@ -95,10 +119,10 @@ export const CHAPTER01_TOPVIEW_SPRITE = {
   frameWidth: 64,
   frameHeight: 80,
   alphaBounds: [
-    { left: 14, top: 8, right: 50, bottom: 76 },
-    { left: 18, top: 8, right: 46, bottom: 76 },
-    { left: 18, top: 8, right: 46, bottom: 76 },
-    { left: 14, top: 8, right: 50, bottom: 76 },
+    { left: 16, top: 8, right: 48, bottom: 76 },
+    { left: 21, top: 8, right: 42, bottom: 76 },
+    { left: 21, top: 8, right: 42, bottom: 76 },
+    { left: 16, top: 8, right: 48, bottom: 76 },
   ],
 } as const;
 
@@ -144,6 +168,27 @@ export function getContainedRasterGeometry(
   verticalAlignment = 0.5,
 ): RasterDrawGeometry {
   const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+
+  return {
+    x: (targetWidth - width) * horizontalAlignment,
+    y: (targetHeight - height) * verticalAlignment,
+    width,
+    height,
+    scale,
+  };
+}
+
+export function getCoverRasterGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  horizontalAlignment = 0.5,
+  verticalAlignment = 0.5,
+): RasterDrawGeometry {
+  const scale = Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight);
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
 

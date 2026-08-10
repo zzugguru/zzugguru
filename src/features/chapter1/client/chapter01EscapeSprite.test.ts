@@ -26,9 +26,9 @@ describe('chapter01EscapeSprite', () => {
       destinationHeight: 160,
     });
     expect(getEscapeYeongsuVisibleBounds(480, 402)).toEqual({
-      left: 452,
+      left: 458,
       top: 266,
-      right: 508,
+      right: 500,
       bottom: 402,
     });
   });

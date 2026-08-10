@@ -7,6 +7,8 @@ interface EscapeGameControls {
   state: RooftopEscapeState;
   leftPressed: boolean;
   rightPressed: boolean;
+  crawlPressed: boolean;
+  jumpSeconds: number;
   playerFacing: -1 | 1;
   monsterFacing: -1 | 1;
   update(deltaSeconds: number): void;
@@ -90,17 +92,17 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('RooftopEscapeGame', () => {
-  it('도입 화면에서 Enter를 누르면 B1 추격을 시작한다', () => {
+  it('도입 화면에서 Chapter 3 방식의 E 또는 Enter로 1F 추격을 시작한다', () => {
     const setupResult = setup();
 
     expect(setupResult.liveRegion.textContent).toContain('사람처럼 보이지 않습니다');
-    setupResult.keydown({ code: 'Enter', repeat: false, preventDefault: vi.fn() });
+    setupResult.keydown({ code: 'KeyE', repeat: false, preventDefault: vi.fn() });
 
     expect(setupResult.controls.screen).toBe('playing');
-    expect(setupResult.liveRegion.textContent).toContain('B1');
+    expect(setupResult.liveRegion.textContent).toContain('1F');
   });
 
-  it('키보드와 화면 좌우 입력을 이동 상태로 바꾼다', () => {
+  it('A/D 이동과 W 점프, S 포복을 처리하고 플레이 중 포인터 이동은 사용하지 않는다', () => {
     const setupResult = setup();
     setupResult.keydown({ code: 'Enter', repeat: false, preventDefault: vi.fn() });
 
@@ -109,8 +111,18 @@ describe('RooftopEscapeGame', () => {
     setupResult.keyup({ code: 'KeyD' });
     expect(setupResult.controls.rightPressed).toBe(false);
 
+    setupResult.keydown({ code: 'KeyW', repeat: false, preventDefault: vi.fn() });
+    expect(setupResult.controls.jumpSeconds).toBeGreaterThan(0);
+    setupResult.keydown({ code: 'KeyS', preventDefault: vi.fn() });
+    expect(setupResult.controls.crawlPressed).toBe(true);
+    setupResult.keydown({ code: 'ShiftLeft', preventDefault: vi.fn() });
+    setupResult.keyup({ code: 'KeyS' });
+    expect(setupResult.controls.crawlPressed).toBe(true);
+    setupResult.keyup({ code: 'ShiftLeft' });
+    expect(setupResult.controls.crawlPressed).toBe(false);
+
     setupResult.pointerdown(100);
-    expect(setupResult.canvas.setPointerCapture).toHaveBeenCalledWith(1);
+    expect(setupResult.canvas.setPointerCapture).not.toHaveBeenCalled();
   });
 
   it('영수와 귀신이 이동·추격 방향을 바라보고 정지 중에는 마지막 방향을 유지한다', () => {
@@ -141,8 +153,17 @@ describe('RooftopEscapeGame', () => {
       monsterX: -80,
       floorGraceSeconds: 1,
     };
+    setupResult.keydown({ code: 'KeyD', preventDefault: vi.fn() });
     setupResult.controls.update(0);
     expect(setupResult.controls.state.floorIndex).toBe(1);
+    expect(setupResult.controls.rightPressed).toBe(false);
+    setupResult.keydown({ code: 'KeyD', repeat: true, preventDefault: vi.fn() });
+    setupResult.controls.update(0.05);
+    expect(setupResult.controls.state.playerX).toBe(850);
+    setupResult.keyup({ code: 'KeyD' });
+    setupResult.keydown({ code: 'KeyA', repeat: false, preventDefault: vi.fn() });
+    setupResult.controls.update(0.05);
+    expect(setupResult.controls.state.playerX).toBeLessThan(850);
     expect(setupResult.controls.playerFacing).toBe(-1);
     expect(setupResult.controls.monsterFacing).toBe(-1);
   });
@@ -154,7 +175,7 @@ describe('RooftopEscapeGame', () => {
     setupResult.controls.update(0.01);
     setupResult.controls.render();
 
-    expect(setupResult.context.translate).toHaveBeenCalledWith(expect.any(Number), 0);
+    expect(setupResult.context.translate).toHaveBeenCalledWith(expect.any(Number), 402);
     expect(setupResult.context.scale).toHaveBeenNthCalledWith(1, -1, 1);
     expect(setupResult.context.scale).toHaveBeenNthCalledWith(2, 1, 1);
     expect(setupResult.context.drawImage).toHaveBeenCalledWith(
@@ -164,7 +185,7 @@ describe('RooftopEscapeGame', () => {
       64,
       80,
       -64,
-      250,
+      -152,
       128,
       160,
     );
@@ -195,12 +216,13 @@ describe('RooftopEscapeGame', () => {
 
     expect(setupResult.controls.screen).toBe('caught');
     expect(setupResult.liveRegion.textContent).toContain('붙잡혔습니다');
+    expect(setupResult.liveRegion.textContent).toContain('E, Enter');
 
     setupResult.keydown({ code: 'Enter', repeat: false, preventDefault: vi.fn() });
     setupResult.controls.state = {
       ...setupResult.controls.state,
-      floorIndex: 3,
-      playerX: 110,
+      floorIndex: 2,
+      playerX: 850,
       monsterX: 900,
     };
     setupResult.controls.update(0);

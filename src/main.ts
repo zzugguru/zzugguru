@@ -71,10 +71,10 @@ app.querySelectorAll<HTMLButtonElement>('[data-game]').forEach((button) => butto
     requestAnimationFrame(() => canvas.focus());
   } else {
     canvas.setAttribute('aria-label', 'Chapter 01 새벽 3시 33분 스토리 화면');
-    controlsText.textContent = '스토리 진행: Z · Enter · 화면 클릭';
+    controlsText.textContent = '스토리 진행: E · Enter · 화면 클릭';
     new Chapter1StoryGame(canvas, liveRegion, () => {
       canvas.setAttribute('aria-label', 'Chapter 01 옥상 탈출 추격 게임 화면');
-      controlsText.textContent = '도망치기: A/D · 방향키 · 화면 좌우 · 리듬 입력 없음';
+      controlsText.textContent = '이동: A/D · ←/→ · 점프: W/↑/Space · 포복: S/↓/Shift · 시작/재시작: E/Enter 또는 클릭';
       new RooftopEscapeGame(canvas, liveRegion).mount();
       requestAnimationFrame(() => canvas.focus());
     }).mount();
