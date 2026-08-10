@@ -4,7 +4,7 @@
 
 ## Status
 
-`READY_FOR_DEVELOPER_CHECK`
+`REVIEW`
 
 상태 흐름: `DRAFT` → `READY` → `IN_PROGRESS` → `REVIEW` → `ACCEPTED`
 

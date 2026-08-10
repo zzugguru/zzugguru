@@ -1,5 +1,6 @@
 export const BPM = 120;
 export const BEAT_MS = 60_000 / BPM;
+export const LIGHT_INPUT_GRACE_MS = 220;
 export const LEAD_IN_BEATS = 4;
 export const DURATION_BEATS = 120;
 export const STAGE_DURATION_MS = 60_000;
@@ -38,8 +39,7 @@ export interface StageState {
   noiseUntilMs: number;
   invulnerableUntilMs: number;
   lastObstacle: number | null;
-  lastPhase: RhythmPhase;
-  wasMoving: boolean;
+  lastLightViolationBar: number | null;
   result: StageResult;
   feedback: string;
   feedbackUntilMs: number;
@@ -97,8 +97,7 @@ export function createStageState(checkpointX: number = QUIET_ZONES[0]): StageSta
     noiseUntilMs: 0,
     invulnerableUntilMs: 0,
     lastObstacle: null,
-    lastPhase: 'light',
-    wasMoving: false,
+    lastLightViolationBar: null,
     result: 'playing',
     feedback: '불이 꺼질 때 움직이세요',
     feedbackUntilMs: 4_000,
@@ -145,22 +144,24 @@ export function stepStage(
   const beat = beatAt(timeMs);
   const direction = Number(input.right) - Number(input.left);
   const wantsToMove = direction !== 0;
-  const crossedIntoLight = current.lastPhase === 'dark' && beat.phase === 'light';
   const finalChase = timeMs >= 50_000;
-  let state = { ...current, lastPhase: beat.phase, wasMoving: wantsToMove };
+  const timeIntoBeat = ((timeMs % BEAT_MS) + BEAT_MS) % BEAT_MS;
+  const lightInputGrace = beat.phase === 'light' && timeIntoBeat < LIGHT_INPUT_GRACE_MS;
+  const barId = Math.floor(beat.id / 4);
+  let state = { ...current };
 
   if (timeMs >= STAGE_DURATION_MS) {
     return { ...state, result: 'dead', feedback: '비상문이 봉쇄되었습니다', feedbackUntilMs: Number.POSITIVE_INFINITY };
   }
 
-  if (beat.phase === 'light' && wantsToMove && !(finalChase && input.run) && (!current.wasMoving || crossedIntoLight)) {
-    state = makeNoise(state, timeMs, '빛이 켜졌다 — 움직임이 발각됐다', true);
+  if (beat.phase === 'light' && !lightInputGrace && wantsToMove && state.lastLightViolationBar !== barId) {
+    state = makeNoise({ ...state, lastLightViolationBar: barId }, timeMs, '빛이 켜졌다 — 움직임이 발각됐다', true);
     if (state.hearts <= 0) {
       return { ...state, result: 'dead', feedback: '세 번째 소음이 놈을 불러냈다', feedbackUntilMs: Number.POSITIVE_INFINITY };
     }
   }
 
-  if ((beat.phase === 'dark' || (finalChase && input.run)) && wantsToMove) {
+  if (beat.phase === 'dark' && wantsToMove) {
     const running = input.run && (state.monsterMode === 'chase' || finalChase);
     const speed = input.crouch ? 35 : running ? 225 : 50;
     const previousX = state.playerX;
@@ -207,15 +208,12 @@ export function stepStage(
     state.feedbackUntilMs = timeMs + 1_200;
   }
 
-  if (state.monsterMode === 'investigate' && beat.phase === 'dark') {
-    state.monsterX = moveToward(state.monsterX, state.monsterTargetX, 105 * (deltaMs / 1_000));
-  } else if (state.monsterMode === 'patrol') {
-    state.monsterX = moveToward(state.monsterX, state.playerX - 130, 68 * (deltaMs / 1_000));
-  } else if (state.monsterMode === 'chase') {
-    const canBreakLightRule = finalChase;
-    if (beat.phase === 'dark' || canBreakLightRule) {
-      state.monsterX = moveToward(state.monsterX, state.playerX, (finalChase ? 185 : 155) * (deltaMs / 1_000));
-    }
+  if (beat.phase === 'dark' && state.monsterMode === 'investigate') {
+    state.monsterX = moveToward(state.monsterX, state.monsterTargetX, 65 * (deltaMs / 1_000));
+  } else if (beat.phase === 'dark' && state.monsterMode === 'patrol') {
+    state.monsterX = moveToward(state.monsterX, state.playerX - 130, 42 * (deltaMs / 1_000));
+  } else if (beat.phase === 'dark' && state.monsterMode === 'chase') {
+    state.monsterX = moveToward(state.monsterX, state.playerX, (finalChase ? 120 : 90) * (deltaMs / 1_000));
   }
 
   const newDistance = Math.abs(state.monsterX - state.playerX);
