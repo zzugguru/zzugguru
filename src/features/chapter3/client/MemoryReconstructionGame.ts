@@ -4,10 +4,11 @@ import { MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, type PlayableMapAss
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
+import { advanceWarning, createWarning, WARNING_LINES, type WarningState } from '../shared/wardenWarningLogic';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 
-type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
+type Screen = 'map' | 'warning' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
 type Controls = {
   map: HTMLElement;
@@ -37,6 +38,8 @@ export class MemoryReconstructionGame {
   private collection: CollectionState = createCollection();
   private lettingGo: LettingGoState = createLettingGo();
   private epilogue: EpilogueState = createEpilogue();
+  private warning: WarningState = createWarning();
+  private warningFadeStartedAt = 0;
   private silenceUntil = 0;
   private awakeningStartedAt = 0;
   private previousTime = performance.now();
@@ -77,7 +80,10 @@ export class MemoryReconstructionGame {
     this.controls.lettingButtons.forEach((button) => button.addEventListener('click', () => {
       if (this.screen === 'letting-go') this.chooseLettingGo(button.dataset.choice as LettingGoChoice);
     }));
-    this.controls.epilogueNext.addEventListener('click', this.advanceEpilogue);
+    this.controls.epilogueNext.addEventListener('click', () => {
+      if (this.screen === 'warning') this.interact();
+      else this.advanceEpilogue();
+    });
     this.controls.choiceButtons.forEach((button, index) => button.addEventListener('click', () => {
       if (this.screen === 'playing') this.choose(FAMILY[index].id);
     }));
@@ -92,6 +98,9 @@ export class MemoryReconstructionGame {
       return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'map') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'warning') {
       event.preventDefault(); this.interact(); return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'epilogue') {
@@ -135,6 +144,12 @@ export class MemoryReconstructionGame {
       else if (this.epilogue.phase === 'archive') this.placeArchiveRecord();
       return;
     }
+    if (this.screen === 'warning') {
+      const wasSeen = this.warning.seen;
+      this.warning = advanceWarning(this.warning);
+      if (!wasSeen && this.warning.seen) this.warningFadeStartedAt = performance.now();
+      return;
+    }
     if (this.screen === 'map' && collectionAvailable(this.flow)) {
       const next = collectNearby(this.collection, this.player);
       this.collection = next;
@@ -143,6 +158,12 @@ export class MemoryReconstructionGame {
         this.screen = 'letting-go';
         requestAnimationFrame(() => this.controls.lettingButtons[0].focus());
       }
+      return;
+    }
+    if (this.screen === 'map' && !this.warning.seen && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap())) {
+      this.screen = 'warning';
+      this.clearMovement();
+      requestAnimationFrame(() => this.controls.epilogueNext.focus());
       return;
     }
     const next = transitionFlow(this.flow, { type: 'interact', allowed: canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap()) });
@@ -174,6 +195,7 @@ export class MemoryReconstructionGame {
     if (this.screen === 'epilogue' && this.epilogue.phase !== 'archive' && this.epilogue.phase !== 'silence') {
       this.advanceEpilogue(); return;
     }
+    if (this.screen === 'warning') { this.interact(); return; }
     if (this.screen !== 'playing') return;
     const bounds = this.canvas.getBoundingClientRect();
     const family = familyAtPoint(
@@ -234,6 +256,10 @@ export class MemoryReconstructionGame {
       this.player = { x: 80, y: 260 };
       requestAnimationFrame(() => this.controls.directions[0].focus());
     }
+    if (this.screen === 'warning' && this.warning.seen && time - this.warningFadeStartedAt >= 420) {
+      this.screen = 'map';
+      this.interact();
+    }
     if (this.screen === 'awakening' && time - this.awakeningStartedAt >= 3_600) {
       this.flow = transitionFlow(this.flow, { type: 'puzzle-success' });
       this.screen = 'result';
@@ -256,6 +282,7 @@ export class MemoryReconstructionGame {
   private render(): void {
     this.context.fillStyle = '#030712'; this.context.fillRect(0, 0, 960, 540);
     if (this.screen === 'map') this.drawMap();
+    else if (this.screen === 'warning') this.drawWarning();
     else if (this.screen === 'playing') this.drawPuzzle();
     else if (this.screen === 'awakening') this.drawAwakening();
     else if (this.screen === 'letting-go') this.drawLettingGo();
@@ -363,6 +390,35 @@ export class MemoryReconstructionGame {
     ctx.font = '16px system-ui'; ctx.fillText('아래 버튼을 눌러 연구 구역으로 돌아가세요.', 480, 310);
   }
 
+  private drawWarning(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = selectChapter03Background(false, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+      ctx.lineWidth = 8; ctx.strokeStyle = '#312e81'; ctx.strokeRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    if (map.device) {
+      const device = map.device.bounds;
+      ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height);
+    }
+    ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
+    this.drawPlayer();
+
+    const line = WARNING_LINES[this.warning.step];
+    ctx.fillStyle = 'rgba(17,24,39,.96)'; ctx.fillRect(80, 372, 800, 118);
+    ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.strokeRect(80, 372, 800, 118);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#818cf8'; ctx.font = '700 16px system-ui'; ctx.fillText(line.speaker, 106, 405);
+    ctx.fillStyle = '#f9fafb'; ctx.font = '700 20px system-ui'; ctx.fillText(line.text, 106, 438);
+    ctx.fillStyle = '#c7d2fe'; ctx.font = '13px system-ui'; ctx.textAlign = 'right'; ctx.fillText('다음 ▸', 854, 475);
+
+    if (this.warning.seen) {
+      const alpha = Math.min(1, (performance.now() - this.warningFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+  }
+
   private drawLettingGo(): void {
     const ctx = this.context;
     ctx.fillStyle = '#111827'; ctx.fillRect(26, 22, 908, 496);
@@ -447,7 +503,7 @@ export class MemoryReconstructionGame {
     this.controls.retryButton.hidden = this.screen !== 'result' || this.state.status !== 'failure';
     this.controls.lettingChoices.hidden = this.screen !== 'letting-go' || this.lettingGo.completed;
     const epilogueCanAdvance = this.screen === 'epilogue' && !['silence', 'corridor', 'archive', 'complete'].includes(this.epilogue.phase);
-    this.controls.epilogueNext.hidden = !epilogueCanAdvance;
+    this.controls.epilogueNext.hidden = !epilogueCanAdvance && !(this.screen === 'warning' && !this.warning.seen);
     const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap());
     const nearObject = this.screen === 'map' && collectionAvailable(this.flow) && nearbyMemoryObject(this.player, this.collection) !== null;
     const nearRecord = this.screen === 'epilogue' && nearbyArchiveRecord(this.player, this.epilogue) !== null;
@@ -457,6 +513,10 @@ export class MemoryReconstructionGame {
     this.controls.choiceButtons.forEach((button) => { button.disabled = this.screen !== 'playing'; });
     this.controls.lettingButtons.forEach((button) => { button.disabled = this.screen !== 'letting-go' || this.lettingGo.completed; });
     let message = '출입 금지 연구 구역입니다. 방향키나 WASD로 영수를 이동하세요.';
+    if (this.screen === 'warning') {
+      const line = WARNING_LINES[this.warning.step];
+      message = `${line.speaker}: ${line.text}` + (this.warning.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
     if (this.screen === 'map' && nearDevice) message = '기억 재구성 장치 앞입니다. E 또는 Enter로 작동하세요.';
     if (this.screen === 'map' && this.flow.deviceComplete) message = this.collection.completed
       ? `${this.collection.message} Chapter03 중간 기록을 완료했습니다.`
