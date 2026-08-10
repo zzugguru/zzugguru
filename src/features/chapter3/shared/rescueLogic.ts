@@ -14,8 +14,8 @@ export const RESCUE_TARGETS: readonly RescueTarget[] = [
   {
     id: 'father',
     name: '외계 아버지',
-    x: 500,
-    y: 460,
+    x: 520,
+    y: 260,
     lines: [
       { speaker: '', text: '아버지는 사고 당시 어린 이온을 잃어버린 순간을 반복해서 보고 있다.' },
       { speaker: '영수', text: '아버지, 그건 이제 지나간 일이에요.' },
@@ -25,8 +25,8 @@ export const RESCUE_TARGETS: readonly RescueTarget[] = [
   {
     id: 'mother',
     name: '외계 어머니',
-    x: 850,
-    y: 450,
+    x: 830,
+    y: 290,
     lines: [
       { speaker: '', text: '어머니는 탈출 장치를 향해 손을 뻗으며 계속 울고 있다.' },
       { speaker: '영수', text: '어머니, 이제 손을 잡아도 돼요.' },
@@ -37,7 +37,7 @@ export const RESCUE_TARGETS: readonly RescueTarget[] = [
     id: 'sister',
     name: '외계 누나',
     x: 260,
-    y: 460,
+    y: 300,
     lines: [
       { speaker: '', text: '누나는 어린 동생을 찾아 끝없는 복도를 달리고 있다.' },
       { speaker: '영수', text: '누나, 그만 뛰어도 돼. 나 여기 있어.' },
