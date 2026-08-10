@@ -86,6 +86,30 @@ export const CHAPTER01_TOPVIEW_BACKGROUNDS = {
   },
 } as const;
 
+export const CHAPTER01_STORY_BACKGROUNDS = {
+  cctvAnomaly: {
+    path: 'src/features/chapter1/assets/chapter01-story-cctv-anomaly.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+  guardRoomHaunting: {
+    path: 'src/features/chapter1/assets/chapter01-story-guard-room-haunting.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+  whiteoutApparition: {
+    path: 'src/features/chapter1/assets/chapter01-story-whiteout-apparition.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+} as const;
+
 export const CHAPTER01_TOPVIEW_SPRITE = {
   path: 'src/assets/chapter01-yeongsu-guard-sprites.png',
   width: 256,

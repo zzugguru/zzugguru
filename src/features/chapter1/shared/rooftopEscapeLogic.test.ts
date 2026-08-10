@@ -2,85 +2,110 @@ import { describe, expect, it } from 'vitest';
 import {
   ESCAPE_FLOORS,
   createRooftopEscapeState,
-  exitXForFloor,
+  obstaclesForFloor,
   stepRooftopEscape,
+  type EscapeAction,
+  type RooftopEscapeState,
 } from './rooftopEscapeLogic';
 
-describe('rooftop escape logic', () => {
-  it('리듬 입력 없이 좌우 방향만으로 영수를 이동시킨다', () => {
+const runRight = { direction: 1 as const, action: 'run' as const };
+const runLeft = { direction: -1 as const, action: 'run' as const };
+
+describe('rooftopEscapeLogic', () => {
+  it('1F 기본 추격에서 영수와 더 빠른 괴물이 출구 방향으로 이동한다', () => {
     const state = { ...createRooftopEscapeState(), floorGraceSeconds: 0 };
-    const moved = stepRooftopEscape(state, 1, 0.05);
+    const moved = stepRooftopEscape(state, runRight, 0.05);
 
     expect(moved.playerX).toBeGreaterThan(state.playerX);
     expect(moved.monsterX).toBeGreaterThan(state.monsterX);
-    expect(moved.result).toBe('playing');
+    expect(moved.monsterX - state.monsterX).toBeGreaterThan(7);
   });
 
-  it('계단에 도달할 때마다 다음 층 반대편에서 추격을 이어간다', () => {
-    const state = { ...createRooftopEscapeState(), playerX: exitXForFloor(0) };
-    const nextFloor = stepRooftopEscape(state, 0, 0);
-
-    expect(nextFloor.floorIndex).toBe(1);
-    expect(nextFloor.playerX).toBeGreaterThan(exitXForFloor(1));
-    expect(nextFloor.monsterX).toBeGreaterThan(nextFloor.playerX);
-  });
-
-  it('괴물과 가까워지면 붙잡힌다', () => {
-    const state = {
+  it('2F 장애물은 점프 중에만 통과하고 놓치면 앞에서 비틀거린다', () => {
+    const base: RooftopEscapeState = {
       ...createRooftopEscapeState(),
-      playerX: 300,
-      monsterX: 330,
-      floorGraceSeconds: 0,
-    };
-
-    expect(stepRooftopEscape(state, 0, 0.01).result).toBe('caught');
-  });
-
-  it('시작 직후에는 방향을 판단할 반응 시간을 준다', () => {
-    let state = createRooftopEscapeState();
-    for (let frame = 0; frame < 20; frame += 1) {
-      state = stepRooftopEscape(state, 0, 0.05);
-    }
-
-    expect(state.result).toBe('playing');
-  });
-
-  it('층 전환 직후 이전 방향을 1초간 유지해도 반대 방향으로 바꿀 수 있다', () => {
-    let state = stepRooftopEscape(
-      { ...createRooftopEscapeState(), playerX: exitXForFloor(0) },
-      0,
-      0,
-    );
-
-    for (let frame = 0; frame < 20; frame += 1) {
-      state = stepRooftopEscape(state, 1, 0.05);
-    }
-
-    expect(state.floorIndex).toBe(1);
-    expect(state.result).toBe('playing');
-    expect(state.monsterX).toBe(1040);
-  });
-
-  it('마지막 층 계단에 도달하면 옥상 탈출에 성공한다', () => {
-    const lastFloorIndex = ESCAPE_FLOORS.length - 1;
-    const state = {
-      ...createRooftopEscapeState(),
-      floorIndex: lastFloorIndex,
-      playerX: exitXForFloor(lastFloorIndex),
+      floorIndex: 1,
+      playerX: 530,
       monsterX: 900,
+      floorGraceSeconds: 1,
     };
 
-    expect(stepRooftopEscape(state, 0, 0).result).toBe('escaped');
+    const missed = stepRooftopEscape(base, runLeft, 0.05);
+    const jumped = stepRooftopEscape(base, { direction: -1, action: 'jump' }, 0.05);
+
+    expect(obstaclesForFloor(1)).toEqual([{ x: 500, kind: 'jump' }]);
+    expect(missed.playerX).toBe(522);
+    expect(missed.stumbleSeconds).toBeGreaterThan(0.6);
+    expect(jumped.playerX).toBeLessThan(522);
+    expect(jumped.stumbleSeconds).toBe(0);
   });
 
-  it('각 층 계단 방향으로 계속 이동하면 리듬 판정 없이 옥상까지 완주한다', () => {
+  it('3F는 점프와 포복을 서로 다른 장애물에서 요구한다', () => {
+    const jumpBase: RooftopEscapeState = {
+      ...createRooftopEscapeState(),
+      floorIndex: 2,
+      playerX: 320,
+      monsterX: -80,
+      floorGraceSeconds: 1,
+    };
+    const crawlBase = { ...jumpBase, playerX: 620 };
+
+    expect(obstaclesForFloor(2)).toEqual([
+      { x: 350, kind: 'jump' },
+      { x: 650, kind: 'crawl' },
+    ]);
+    expect(stepRooftopEscape(jumpBase, runRight, 0.05).playerX).toBe(328);
+    expect(stepRooftopEscape(jumpBase, { direction: 1, action: 'jump' }, 0.05).playerX).toBeGreaterThan(328);
+    expect(stepRooftopEscape(crawlBase, { direction: 1, action: 'jump' }, 0.05).playerX).toBe(628);
+    expect(stepRooftopEscape(crawlBase, { direction: 1, action: 'crawl' }, 0.05).playerX).toBeGreaterThan(628);
+  });
+
+  it('각 출구에서 다음 스테이지로 넘어가고 3F를 마치면 탈출한다', () => {
+    let state = { ...createRooftopEscapeState(), playerX: 850 };
+    state = stepRooftopEscape(state, { direction: 0, action: 'run' }, 0);
+    expect([state.floorIndex, state.playerX, state.monsterX]).toEqual([1, 850, 1040]);
+
+    state = { ...state, playerX: 110 };
+    state = stepRooftopEscape(state, { direction: 0, action: 'run' }, 0);
+    expect([state.floorIndex, state.playerX, state.monsterX]).toEqual([2, 110, -80]);
+
+    state = { ...state, playerX: 850 };
+    expect(stepRooftopEscape(state, { direction: 0, action: 'run' }, 0).result).toBe('escaped');
+  });
+
+  it('올바른 동작 경로는 빨라진 괴물을 피해 3개 스테이지를 완주할 수 있다', () => {
     let state = createRooftopEscapeState();
-
-    for (let frame = 0; frame < 600 && state.result === 'playing'; frame += 1) {
-      const direction = exitXForFloor(state.floorIndex) > state.playerX ? 1 : -1;
-      state = stepRooftopEscape(state, direction, 0.05);
+    for (let frame = 0; frame < 2_400 && state.result === 'playing'; frame += 1) {
+      const exitRight = state.floorIndex % 2 === 0;
+      const obstacle = obstaclesForFloor(state.floorIndex).find(({ x }) => Math.abs(state.playerX - x) < 42);
+      const action: EscapeAction = obstacle?.kind ?? 'run';
+      state = stepRooftopEscape(state, { direction: exitRight ? 1 : -1, action }, 1 / 60);
     }
-
     expect(state.result).toBe('escaped');
+    expect(state.floorIndex).toBe(ESCAPE_FLOORS.length - 1);
+  });
+
+  it('비틀거리는 동안 괴물은 계속 접근해 영수를 붙잡는다', () => {
+    let state: RooftopEscapeState = {
+      ...createRooftopEscapeState(),
+      floorIndex: 1,
+      playerX: 522,
+      monsterX: 590,
+      floorGraceSeconds: 0,
+      stumbleSeconds: 0.62,
+    };
+    for (let frame = 0; frame < 60 && state.result === 'playing'; frame += 1) {
+      state = stepRooftopEscape(state, runLeft, 1 / 60);
+    }
+    expect(state.result).toBe('caught');
+  });
+
+  it('완료 상태와 비정상적으로 큰 delta를 안전하게 처리한다', () => {
+    const state = { ...createRooftopEscapeState(), playerX: 880 };
+    const clamped = stepRooftopEscape(state, runRight, 10);
+    expect(clamped.playerX).toBeLessThanOrEqual(890);
+
+    const caught = { ...state, result: 'caught' as const };
+    expect(stepRooftopEscape(caught, runRight, 1)).toBe(caught);
   });
 });
