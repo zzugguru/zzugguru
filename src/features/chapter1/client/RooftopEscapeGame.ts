@@ -52,10 +52,12 @@ export class RooftopEscapeGame {
   private jumpSeconds = 0;
   private playerFacing: HorizontalFacing = 1;
   private monsterFacing: HorizontalFacing = 1;
+  private completionNotified = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly liveRegion: HTMLElement,
+    private readonly onComplete: () => void = () => undefined,
   ) {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
@@ -177,6 +179,12 @@ export class RooftopEscapeGame {
     this.lastTimestamp = timestamp;
     this.update(deltaSeconds);
     this.render();
+    if (this.screen === 'escaped' && !this.completionNotified) {
+      this.completionNotified = true;
+      this.stop();
+      this.onComplete();
+      return;
+    }
     this.animationId = requestAnimationFrame(this.loop);
   };
 

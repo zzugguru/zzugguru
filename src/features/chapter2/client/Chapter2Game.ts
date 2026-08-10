@@ -20,8 +20,9 @@ export class Chapter2Game {
   private readonly sequence: Sequence;
   private readonly game: Game;
   private lastTimestamp: number | null = null;
+  private completionNotified = false;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, private readonly onComplete: () => void = () => undefined) {
     this.bounds = { width: canvas.width, height: canvas.height };
 
     this.sequence = new Sequence([
@@ -76,10 +77,20 @@ export class Chapter2Game {
       this.sequence.update(this.input, deltaSeconds, this.bounds);
       this.sequence.render(context, canvasEl);
       this.input.clearFrame();
+      if (this.sequence.isComplete() && !this.completionNotified) {
+        this.completionNotified = true;
+        this.stop();
+        this.onComplete();
+      }
     });
   }
 
   mount(): void {
     this.game.start();
+  }
+
+  stop(): void {
+    this.game.stop();
+    this.input.dispose();
   }
 }

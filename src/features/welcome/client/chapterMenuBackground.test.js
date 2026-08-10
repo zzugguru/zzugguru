@@ -36,4 +36,23 @@ describe('chapter menu background integration', () => {
       /\.chapter-menu button:focus-visible,[\s\S]*?outline: 3px solid #f9fafb;[\s\S]*?outline-offset: 2px;/,
     );
   });
+
+  it('renders structured chapter cards and an announced progress summary', () => {
+    expect(entrypoint).toContain('class="chapter-menu__intro"');
+    expect(entrypoint).toContain('class="chapter-progress" aria-live="polite"');
+    expect(entrypoint.match(/class="chapter-card"/g)).toHaveLength(3);
+    expect(entrypoint.match(/data-chapter-status/g)).toHaveLength(3);
+    expect(entrypoint.match(/data-chapter-action/g)).toHaveLength(3);
+    expect(entrypoint).toContain('data-progress-count');
+  });
+
+  it('uses a three-card desktop journey and a single-column mobile reading order', () => {
+    expect(stylesheet).toMatch(
+      /\.chapter-list\s*\{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/,
+    );
+    expect(stylesheet).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*?\.chapter-list\s*\{[\s\S]*?grid-template-columns: 1fr;/,
+    );
+    expect(stylesheet).toMatch(/\.chapter-menu \.chapter-card\[data-current="true"\]/);
+  });
 });

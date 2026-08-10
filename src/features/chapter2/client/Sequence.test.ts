@@ -69,6 +69,12 @@ describe('Sequence', () => {
 
     expect(only.update).toHaveBeenCalledTimes(2);
     expect(only.render).toHaveBeenCalledTimes(1);
+    expect(sequence.isComplete()).toBe(true);
+  });
+
+  it('reports incomplete before the final scene has completed', () => {
+    const sequence = new Sequence([() => createScene(() => false), () => createScene(() => true)]);
+    expect(sequence.isComplete()).toBe(false);
   });
 
   it('throws when constructed with an empty step list', () => {

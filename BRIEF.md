@@ -8,6 +8,63 @@
 
 ## Developer Request
 
+### Active Request — chapter selection UI refresh (supersedes the older requests below)
+
+#### Task
+
+Improve the opening chapter-selection interface without changing chapter gameplay or sequential unlock rules.
+
+#### Included Scope
+
+- Preserve the existing cinematic background and dark indigo design system.
+- Replace plain chapter buttons with structured chapter cards showing number, title, short premise, availability, and next action.
+- Show an at-a-glance journey/progress indicator and make the next playable chapter visually prominent.
+- Keep locked chapters disabled and expose their prerequisite in visible text, title, and accessible labeling.
+- Provide responsive desktop and mobile layouts with clear keyboard focus and readable contrast.
+- Add regression coverage for card structure, state rendering, label stability, and responsive styling.
+
+#### Excluded Scope
+
+- New raster assets, chapter narrative changes, progress reset controls, or changes to sequential unlock behavior.
+- Changes to in-game HUDs or canvas gameplay.
+
+#### Done When
+
+- The opening screen communicates the three-chapter journey and the current next action without relying on color alone.
+- Each chapter card shows stable content in unlocked and locked states without destroying its internal markup.
+- Locked prerequisites remain visible and accessible, and unlocked chapters remain keyboard operable.
+- Desktop and narrow mobile layouts remain usable without clipping core actions.
+- Design lint, typecheck, all tests, build, diff check, and one independent Terra review pass.
+
+### Active Request — persistent sequential chapter unlocking (supersedes the older request below)
+
+#### Task
+
+Lock Chapter 2 until Chapter 1 is completed, and lock Chapter 3 until Chapter 2 is completed.
+
+#### Included Scope
+
+- Chapter 1 is always available; Chapter 2 and Chapter 3 menu buttons expose clear locked/disabled states.
+- Persist the highest unlocked chapter in browser `localStorage` so progress survives reloads.
+- Treat missing, malformed, unsupported, or inaccessible stored data as fresh Chapter 1-only progress.
+- Completing Chapter 1 unlocks and starts Chapter 2; completing Chapter 2 unlocks and starts Chapter 3.
+- Unlocking is monotonic and cannot relock an already available chapter.
+- Stop the completed chapter's animation loop and input listeners before mounting the next chapter.
+- Add regression tests for initial locks, reload persistence, malformed storage, monotonic updates, completion callbacks, cleanup, and menu gating.
+
+#### Excluded Scope
+
+- Reset-progress UI, cloud synchronization, authentication, or cross-browser progress transfer.
+- Changes to chapter narratives, gameplay balance, or raster assets.
+
+#### Done When
+
+- A fresh browser can start only Chapter 1.
+- Completing Chapter 1 persists and opens Chapter 2; completing Chapter 2 persists and opens Chapter 3.
+- Reloading preserves the highest unlocked chapter, while invalid storage safely falls back to Chapter 1.
+- Locked buttons cannot start their chapters and communicate their prerequisite accessibly.
+- Typecheck, all tests, build, diff check, and one independent Terra review pass complete.
+
 ### Active Request — Chapter 1 controls and escape stages (supersedes the older request below)
 
 #### Task
@@ -80,6 +137,11 @@ Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign 
 
 ## Agent Understanding
 
+The opening screen will retain its existing story background but gain a clearer hierarchy: a compact title/progress introduction followed by three structured chapter cards. Each card will retain stable number, title, premise, status, and action elements while the existing persistent sequential progression controls disabled, locked, and next-playable states. No raster or gameplay changes are included. Existing design tokens will be reused, new component variants will be documented in `DESIGN.md`, and responsive/accessibility behavior will be covered by tests.
+
+새 브라우저에서는 Chapter 1만 실행할 수 있고, 완료 순서에 따라 Chapter 2와 Chapter 3을 단조 증가 방식으로 해금한다. 최고 해금 단계는 버전이 포함된 `localStorage` 레코드로 보존하며 읽기·쓰기 예외와 잘못된 값은 Chapter 1-only 상태로 안전하게 처리한다. Chapter 1 및 Chapter 2 완료 시 기존 게임의 RAF와 입력 리스너를 먼저 정리한 뒤 다음 챕터를 자동 시작한다. 메뉴 버튼은 실제 `disabled`와 잠금 사유를 함께 제공한다. 저장 초기화 UI, 서버 동기화, 게임 내용 변경은 범위 밖이다.
+
+
 병합 충돌에 남은 기존 단일 이미지 구현 대신 새 `scene_cctv` 정상/귀신 쌍 선택을 기준으로 CCTV 렌더링을 구성한다. 이전 로직에서 개선한 채널 clamp, 자동 다음 채널, 오답·경계 피드백과 E/Enter 안내는 유지한다. 이미지가 아직 로드되지 않았거나 유효하지 않으면 기본 화면을 표시하되 상태 진행은 막지 않는다.
 
 ## Agent Questions
@@ -93,6 +155,22 @@ Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign 
 - 2026-08-10: 기존 3장 단일 기억 이미지 방식 대신 방금 병합된 채널별 정상/귀신 6장 전환 로직을 사용한다.
 
 ## Agent Result
+
+- Refreshed the opening chapter selection into three structured story cards while preserving the existing cinematic background and sequential unlock behavior.
+- Added a live unlocked-chapter summary and distinct current, completed/replayable, and locked card states with visible prerequisites and accessible labels.
+- Added responsive three-column desktop and one-column mobile layouts using existing design tokens; documented `chapter-progress`, `chapter-card`, and `chapter-card-locked` in `DESIGN.md`.
+- Updated state rendering so it changes only dedicated status/action nodes and never destroys card markup across rerenders.
+- Verification passed: `npm run design:lint` (0 errors; two existing orphan-token warnings), `npm run typecheck`, `npm run test` (68 files, 330 tests), `npm run build`, and `git diff --check`.
+- Independent Terra review reported no actionable findings; focused reviewer checks passed (3 files, 18 tests).
+- Residual risk: no connected browser was available, so real viewport clipping and visual contrast were not manually inspected.
+
+- Delivered persistent sequential progression: Chapter 1 unlocks/starts Chapter 2, and Chapter 2 unlocks/starts Chapter 3. Fresh sessions expose only Chapter 1.
+- Added versioned `localStorage` progress with safe invalid/inaccessible-storage fallback and monotonic writes that preserve newer progress from another tab.
+- Added disabled menu states, accessible prerequisite labels, defensive locked activation rejection, and stable labels across rerenders.
+- Added one-shot completion handoffs and RAF/input cleanup for Chapter 1 rooftop escape and Chapter 2 before the next chapter mounts.
+- Verification passed: `npm run typecheck`; `npm run test` (68 files, 328 tests); `npm run build`; `git diff --check`.
+- Independent Terra(high) review found two P2 gaps (stale-tab monotonicity and source-only menu tests); both were fixed and the same reviewer verified the result clean.
+- Residual risk: the full Chapter 1-to-3 playthrough was not manually completed in a real browser during this run; automated progression, persistence, gating, callback, and cleanup paths pass.
 
 - 병합 충돌을 해소하고 기존 3장 단일 이미지 구현을 `scene_cctv`의 채널별 정상/귀신 이미지 6장 전환 로직으로 교체했다.
 - 현재 라운드의 목표 채널만 귀신 영상을 표시하고 다른 채널은 정상 영상을 표시한다. 유효한 영상은 `(180,80,600,340)`에 맞춰 렌더링하며 미로딩·오규격 영상은 단색 fallback을 유지한다.

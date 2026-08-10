@@ -13,6 +13,7 @@ interface EscapeGameControls {
   monsterFacing: -1 | 1;
   update(deltaSeconds: number): void;
   render(): void;
+  loop(timestamp: number): void;
 }
 
 interface ListenerEvent {
@@ -21,7 +22,7 @@ interface ListenerEvent {
   preventDefault?: () => void;
 }
 
-function setup() {
+function setup(onComplete: () => void = () => undefined) {
   const windowListeners = new Map<string, (event: ListenerEvent) => void>();
   const canvasListeners = new Map<string, (event: { clientX: number; pointerId: number }) => void>();
   const smoothingValues: boolean[] = [];
@@ -72,7 +73,7 @@ function setup() {
     src = '';
   });
 
-  const game = new RooftopEscapeGame(canvas, liveRegion);
+  const game = new RooftopEscapeGame(canvas, liveRegion, onComplete);
   game.mount();
   return {
     game,
@@ -229,6 +230,20 @@ describe('RooftopEscapeGame', () => {
 
     expect(setupResult.controls.screen).toBe('escaped');
     expect(setupResult.liveRegion.textContent).toContain('옥상 문');
+  });
+
+  it('옥상 탈출 완료를 한 번 알리고 입력과 RAF를 정리한다', () => {
+    const onComplete = vi.fn();
+    const setupResult = setup(onComplete);
+    setupResult.controls.screen = 'escaped';
+
+    setupResult.controls.loop(100);
+    setupResult.controls.loop(116);
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(setupResult.windowListeners.size).toBe(0);
+    expect(setupResult.canvasListeners.size).toBe(0);
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(9);
   });
 
   it('중지할 때 전역 입력과 캔버스 입력을 모두 정리한다', () => {
