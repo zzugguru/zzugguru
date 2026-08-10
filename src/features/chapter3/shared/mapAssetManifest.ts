@@ -28,7 +28,7 @@ export const SPACESHIP_MAP: PlayableMapAssetEntry = {
 };
 
 export const MEMORY_ROOM_MAP: PlayableMapAssetEntry = {
-  id: 'chapter03-memory-room-v2', file: 'chapter03-memory-room-v2.png', version: '2026-08-09.2', status: 'verified',
+  id: 'chapter03-memory-room-v2', file: 'chapter03-memory-room-v2.png', version: '2026-08-10.1', status: 'verified',
   canvas: { width: 960, height: 540 }, bounds: { x: 82, y: 32, width: 796, height: 456 }, spawn: { x: 570, y: 300 },
   collisions: [
     { x: 210, y: 108, width: 90, height: 92 }, { x: 345, y: 66, width: 165, height: 122 },

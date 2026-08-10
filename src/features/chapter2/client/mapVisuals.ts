@@ -13,9 +13,14 @@ export const SECURITY_OFFICE: MapVisual = {
   backgroundUrl: assetUrl('security-office.png'),
   floor: { x: 112, y: 256, width: 736, height: 244 },
   collisions: [
-    { x: 248, y: 78, width: 456, height: 178 },
-    { x: 88, y: 310, width: 168, height: 118 },
-    { x: 688, y: 340, width: 172, height: 130 },
+    { x: 158, y: 115, width: 72, height: 145 },
+    { x: 243, y: 102, width: 72, height: 124 },
+    { x: 333, y: 69, width: 281, height: 188 },
+    { x: 618, y: 171, width: 48, height: 62 },
+    { x: 665, y: 55, width: 88, height: 179 },
+    { x: 755, y: 108, width: 52, height: 97 },
+    { x: 124, y: 334, width: 141, height: 136 },
+    { x: 650, y: 381, width: 139, height: 99 },
   ].map((rect) => scaleRectFromCenter(rect)),
 };
 

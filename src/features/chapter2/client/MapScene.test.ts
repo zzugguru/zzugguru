@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MapScene, type MapObjectDefinition } from './MapScene';
+import {
+  MapScene,
+  objectLabelPosition,
+  objectPromptPosition,
+  shouldRenderObjectMarker,
+  type MapObjectDefinition,
+} from './MapScene';
 import type { Direction } from '../shared/movement';
 import type { InputState } from './input';
 
@@ -109,6 +115,52 @@ describe('MapScene', () => {
 
     expect(scene.isComplete()).toBe(false);
     expect(onInteract).not.toHaveBeenCalled();
+  });
+
+  it('always renders an object name and marks it complete after interaction', () => {
+    const scene = new MapScene([
+      windowObject({ visualLabel: '전망창 제어장치' }),
+    ], { x: 100, y: 100 });
+    const context = createContext();
+
+    scene.render(context, canvas);
+    expect(context.fillText).toHaveBeenCalledWith('전망창 제어장치', 100, 124);
+
+    scene.update(createInput(noDirection, true), 0.016, bounds);
+    scene.render(context, canvas);
+    expect(context.fillText).toHaveBeenCalledWith('전망창 제어장치 · 완료', 100, 124);
+  });
+
+  it('keeps a background-embedded object interactive and labeled without drawing a duplicate marker', () => {
+    const familyPhoto = windowObject({
+      renderMarker: false,
+      visualLabel: '가족사진',
+      visual: { asset: 'family-photo', position: { x: 100, y: 100 }, width: 48, height: 40 },
+    });
+    const scene = new MapScene([familyPhoto], { x: 100, y: 100 });
+    const context = createContext();
+
+    expect(shouldRenderObjectMarker(familyPhoto)).toBe(false);
+    expect(shouldRenderObjectMarker(windowObject({ visual: familyPhoto.visual }))).toBe(true);
+    scene.render(context, canvas);
+    expect(context.fillRect).not.toHaveBeenCalledWith(92, 92, 16, 16);
+    expect(context.fillText).toHaveBeenCalledWith('가족사진', 100, 136);
+
+    scene.update(createInput(noDirection, true), 0.016, bounds);
+    expect(scene.getInteractedIds().has('window')).toBe(true);
+  });
+
+  it('places the action prompt below the persistent name with readable clearance', () => {
+    const object = windowObject({
+      position: { x: 480, y: 270 },
+      visual: { asset: 'cctv', position: { x: 480, y: 210 }, width: 112, height: 84 },
+    });
+    const label = objectLabelPosition(object);
+    const prompt = objectPromptPosition(object);
+
+    expect(label).toEqual({ x: 480, y: 268 });
+    expect(prompt).toEqual({ x: 480, y: 292 });
+    expect(prompt.y - label.y).toBeGreaterThanOrEqual(24);
   });
 
   describe('interaction messages', () => {

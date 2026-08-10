@@ -11,6 +11,8 @@ export function createWindowScene(): MapScene {
         interactionRadius: 56,
         required: true,
         label: '창밖 바라보기',
+        visualLabel: '전망창 제어장치',
+        visual: { asset: 'window-console', position: { x: 480, y: 190 }, width: 54, height: 58 },
       },
     ],
     { x: 480, y: 380 },

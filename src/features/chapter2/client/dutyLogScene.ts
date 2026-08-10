@@ -14,6 +14,8 @@ export function createDutyLogScene(): MapScene {
         interactionRadius: 48,
         required: true,
         label: '경비일지 확인하기',
+        visualLabel: '경비일지',
+        visual: { asset: 'duty-log', position: { x: 480, y: 240 }, width: 48, height: 54 },
       },
     ],
     { x: 480, y: 400 },
