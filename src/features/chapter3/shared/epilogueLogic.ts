@@ -70,8 +70,8 @@ export function enterArchive(state: EpilogueState, position: Point): EpilogueSta
 
 export function moveEpiloguePlayer(position: Point, dx: number, dy: number): Point {
   return {
-    x: Math.max(48, Math.min(886, position.x + dx)),
-    y: Math.max(90, Math.min(466, position.y + dy)),
+    x: Math.max(49, Math.min(885, position.x + dx)),
+    y: Math.max(115, Math.min(463, position.y + dy)),
   };
 }
 

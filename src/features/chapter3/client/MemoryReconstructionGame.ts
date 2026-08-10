@@ -5,6 +5,7 @@ import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, n
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
+import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 
 type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -30,6 +31,7 @@ export class MemoryReconstructionGame {
   private screen: Screen = 'map';
   private state: MemoryGameState = createMemoryGame();
   private player: Point = { ...SPACESHIP_MAP.spawn };
+  private playerFacing: PlayerFacing = 'down';
   private pressed = new Set<Direction>();
   private flow: FlowState = createFlow();
   private collection: CollectionState = createCollection();
@@ -41,6 +43,7 @@ export class MemoryReconstructionGame {
   private lastAnnouncement = '';
   private readonly spaceshipImage = new Image();
   private readonly memoryRoomImage = new Image();
+  private readonly playerImage = new Image();
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
@@ -50,6 +53,7 @@ export class MemoryReconstructionGame {
     requirePlayableMap(MEMORY_ROOM_MAP);
     this.spaceshipImage.src = new URL('../assets/chapter03-spaceship-lab.png', import.meta.url).href;
     this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room-v2.png', import.meta.url).href;
+    this.playerImage.src = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
   }
 
   mount(): void {
@@ -242,6 +246,7 @@ export class MemoryReconstructionGame {
   private updateMap(delta: number): void {
     let dx = Number(this.pressed.has('right')) - Number(this.pressed.has('left'));
     let dy = Number(this.pressed.has('down')) - Number(this.pressed.has('up'));
+    this.playerFacing = facingFromMovement(dx, dy, this.playerFacing);
     if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
     this.player = this.screen === 'epilogue'
       ? moveEpiloguePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18)
@@ -280,8 +285,7 @@ export class MemoryReconstructionGame {
     }
     if (collectionAvailable(this.flow)) this.drawMemoryArea();
     ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
-    ctx.fillStyle = '#f9fafb'; ctx.fillRect(this.player.x, this.player.y, PLAYER_SIZE, PLAYER_SIZE);
-    ctx.fillStyle = '#312e81'; ctx.fillRect(this.player.x + 5, this.player.y + 5, 6, 6); ctx.fillRect(this.player.x + 16, this.player.y + 5, 6, 6);
+    this.drawPlayer();
     if (canInteract(this.player, map) && !this.flow.deviceComplete) {
       ctx.fillStyle = '#312e81'; ctx.fillRect(300, 448, 360, 42);
       ctx.fillStyle = '#f9fafb'; ctx.textAlign = 'center'; ctx.font = '700 16px system-ui'; ctx.fillText('E 또는 ENTER · 기억 재구성 장치 작동', 480, 475);
@@ -395,7 +399,7 @@ export class MemoryReconstructionGame {
       for (let x = 48; x < 912; x += 48) ctx.strokeRect(x, 90, 48, 400);
       ctx.fillStyle = '#312e81'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
       ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.fillText('기록 보관소', ARCHIVE_DOOR.x, ARCHIVE_DOOR.y + 5);
-      ctx.fillRect(this.player.x, this.player.y, PLAYER_SIZE, PLAYER_SIZE);
+      this.drawPlayer();
       ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui'; ctx.fillText(this.epilogue.message, 480, 55); return;
     }
     if (phase === 'archive' || phase === 'archive-complete') {
@@ -406,7 +410,7 @@ export class MemoryReconstructionGame {
         ctx.strokeStyle = placed ? '#f9fafb' : '#818cf8'; ctx.strokeRect(record.x - 32, record.y - 24, 64, 48);
         ctx.fillStyle = '#c7d2fe'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(placed ? '보존 완료' : record.name, record.x, record.y + 4);
       }
-      ctx.fillStyle = '#f9fafb'; ctx.fillRect(this.player.x, this.player.y, PLAYER_SIZE, PLAYER_SIZE);
+      this.drawPlayer();
       ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.fillText(`기록 배치 ${this.epilogue.placed.length} / ${ARCHIVE_RECORDS.length}`, 480, 470);
       ctx.fillText(this.epilogue.message.slice(0, 90), 480, 500); return;
     }
@@ -425,6 +429,15 @@ export class MemoryReconstructionGame {
     }
     if (phase === 'credits') { ctx.fillStyle = '#f9fafb'; ctx.font = '700 38px system-ui'; ctx.fillText('CHAPTER 03 · 마지막 저녁', 480, 240); ctx.font = '16px system-ui'; ctx.fillText('잃어버린 가족을 찾았고, 떠나간 가족에게 작별했다.', 480, 290); return; }
     if (phase === 'postcredits' || phase === 'complete') { ctx.fillStyle = '#f9fafb'; ctx.font = '22px system-ui'; ctx.fillText(this.epilogue.message, 480, 270); if (phase === 'complete') { ctx.fillStyle = '#818cf8'; ctx.font = '15px system-ui'; ctx.fillText('END', 480, 330); } }
+  }
+
+  private drawPlayer(): void {
+    if (drawPlayerSprite(this.context, this.playerImage, this.player, this.playerFacing)) return;
+    this.context.fillStyle = '#f9fafb';
+    this.context.fillRect(this.player.x, this.player.y, PLAYER_SIZE, PLAYER_SIZE);
+    this.context.fillStyle = '#312e81';
+    this.context.fillRect(this.player.x + 5, this.player.y + 5, 6, 6);
+    this.context.fillRect(this.player.x + 16, this.player.y + 5, 6, 6);
   }
 
   private syncControls(): void {
