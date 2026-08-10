@@ -1,7 +1,8 @@
 import './style.css';
-import { RhythmHorrorGame } from './features/chapter1/client/RhythmHorrorGame';
+import { Chapter1StoryGame } from './features/chapter1/client/Chapter1StoryGame';
 import { MemoryReconstructionGame } from './features/chapter3/client/MemoryReconstructionGame';
 import { Chapter2Game } from './features/chapter2/client/Chapter2Game';
+import { RooftopEscapeGame } from './features/chapter1/client/RooftopEscapeGame';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('#app 요소를 찾을 수 없습니다.');
@@ -11,7 +12,7 @@ app.innerHTML = `
     <section class="chapter-menu" aria-labelledby="chapter-title">
       <p class="eyebrow">ZZUGGURU · STORY PROTOTYPES</p>
       <h1 id="chapter-title">플레이할 챕터를 선택하세요</h1>
-      <button type="button" data-game="rhythm">Chapter 01 · 리듬 호러</button>
+      <button type="button" data-game="chapter1">Chapter 01 · 새벽 3시 33분</button>
       <button type="button" data-game="chapter2">Chapter 02 · 이온</button>
       <button type="button" data-game="memory">Chapter 03 · 마지막 저녁</button>
     </section>
@@ -82,8 +83,14 @@ app.querySelectorAll<HTMLButtonElement>('[data-game]').forEach((button) => butto
     new Chapter2Game(canvas).mount();
     requestAnimationFrame(() => canvas.focus());
   } else {
-    controlsText.textContent = 'A/D 이동 · S 숨기 · Shift 달리기 · W 문 통과 · Esc 일시정지';
-    new RhythmHorrorGame(canvas).mount();
+    canvas.setAttribute('aria-label', 'Chapter 01 새벽 3시 33분 스토리 화면');
+    controlsText.textContent = '스토리 진행: Z · Enter · 화면 클릭';
+    new Chapter1StoryGame(canvas, liveRegion, () => {
+      canvas.setAttribute('aria-label', 'Chapter 01 옥상 탈출 추격 게임 화면');
+      controlsText.textContent = '도망치기: A/D · 방향키 · 화면 좌우 · 리듬 입력 없음';
+      new RooftopEscapeGame(canvas, liveRegion).mount();
+      requestAnimationFrame(() => canvas.focus());
+    }).mount();
     requestAnimationFrame(() => canvas.focus());
   }
 }, { once: true }));
