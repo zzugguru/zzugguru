@@ -2,9 +2,12 @@ import { cycleIndex } from '../shared/selection';
 import type { Bounds } from '../shared/movement';
 import type { InputState } from './input';
 import type { Scene } from './Sequence';
+import { createLoadedImage } from './mapVisuals';
 
 interface CctvChannel {
   label: string;
+  normalUrl: string;
+  ghostUrl: string;
 }
 
 interface CctvRound {
@@ -14,7 +17,20 @@ interface CctvRound {
   monologue: string;
 }
 
-const CHANNELS: CctvChannel[] = [{ label: '지하주차장' }, { label: '1층 로비' }, { label: '경비실 앞' }];
+const sceneCctvUrl = (name: string): string => new URL(`../assets/scene_cctv/${name}`, import.meta.url).href;
+
+const CHANNELS: CctvChannel[] = [
+  { label: '지하주차장', normalUrl: sceneCctvUrl('under_parking_normal.png'), ghostUrl: sceneCctvUrl('under_parking_ghost.png') },
+  { label: '1층 로비', normalUrl: sceneCctvUrl('front_robby_normal.png'), ghostUrl: sceneCctvUrl('front_robby_ghost.png') },
+  { label: '경비실 앞', normalUrl: sceneCctvUrl('front_security_normal.png'), ghostUrl: sceneCctvUrl('front_security_ghost.png') },
+];
+
+/** 채널별 정상/귀신 CCTV 영상. 씬 인스턴스와 무관하게 모듈 스코프에서 한 번만 로드한다. */
+const CHANNEL_IMAGES: readonly { normal: HTMLImageElement | null; ghost: HTMLImageElement | null }[] =
+  CHANNELS.map((channel) => ({
+    normal: createLoadedImage(channel.normalUrl),
+    ghost: createLoadedImage(channel.ghostUrl),
+  }));
 
 const ROUNDS: CctvRound[] = [
   { channelIndex: 0, monologue: '왜 자꾸…… 눈이 가지.' },
@@ -63,6 +79,7 @@ export class CctvConsoleScene implements Scene {
 
     context.fillStyle = '#111827';
     context.fillRect(SCREEN.x, SCREEN.y, SCREEN.width, SCREEN.height);
+    this.drawChannelFootage(context);
     context.strokeStyle = '#374151';
     context.lineWidth = 4;
     context.strokeRect(SCREEN.x, SCREEN.y, SCREEN.width, SCREEN.height);
@@ -83,6 +100,16 @@ export class CctvConsoleScene implements Scene {
     if (this.activeMessage !== null) {
       this.renderMessageOverlay(context, canvas, this.activeMessage);
     }
+  }
+
+  /** 현재 채널이 이번 라운드의 정답 채널이면 귀신 영상을, 아니면 평상시 영상을 그린다. */
+  private drawChannelFootage(context: CanvasRenderingContext2D): boolean {
+    const isTargetChannel = this.currentRound < ROUNDS.length && this.currentChannel === ROUNDS[this.currentRound].channelIndex;
+    const images = CHANNEL_IMAGES[this.currentChannel];
+    const image = isTargetChannel ? images.ghost : images.normal;
+    if (!image?.complete || image.naturalWidth === 0) return false;
+    context.drawImage(image, SCREEN.x, SCREEN.y, SCREEN.width, SCREEN.height);
+    return true;
   }
 
   private renderMessageOverlay(
