@@ -11,6 +11,8 @@ export function createEncounterScene(): MapScene {
         interactionRadius: 80,
         required: true,
         label: '뒤돌아보기',
+        visualLabel: '낯선 존재',
+        visual: { asset: 'presence', position: { x: 480, y: 260 }, width: 46, height: 72 },
       },
     ],
     { x: 480, y: 320 },

@@ -9,6 +9,7 @@ export interface Rect {
 
 export const MAP_PLAYER_COLLISION_SIZE = 24;
 export const MAP_PLAYER_VISIBLE_EXTENTS = { left: 18, right: 18, top: 56, bottom: 12 } as const;
+export const MAP_PLAYER_COLLISION_HALF = MAP_PLAYER_COLLISION_SIZE / 2;
 
 const SPEED_PER_SECOND = 160;
 
@@ -17,18 +18,18 @@ function overlaps(a: Rect, b: Rect): boolean {
 }
 
 function isAllowed(position: Vector2, floor: Rect, collisions: readonly Rect[]): boolean {
-  const visible = {
-    x: position.x - MAP_PLAYER_VISIBLE_EXTENTS.left,
-    y: position.y - MAP_PLAYER_VISIBLE_EXTENTS.top,
-    width: MAP_PLAYER_VISIBLE_EXTENTS.left + MAP_PLAYER_VISIBLE_EXTENTS.right,
-    height: MAP_PLAYER_VISIBLE_EXTENTS.top + MAP_PLAYER_VISIBLE_EXTENTS.bottom,
+  const feet = {
+    x: position.x - MAP_PLAYER_COLLISION_HALF,
+    y: position.y - MAP_PLAYER_COLLISION_HALF,
+    width: MAP_PLAYER_COLLISION_SIZE,
+    height: MAP_PLAYER_COLLISION_SIZE,
   };
-  const visibleInside =
-    position.x - MAP_PLAYER_VISIBLE_EXTENTS.left >= floor.x &&
-    position.x + MAP_PLAYER_VISIBLE_EXTENTS.right <= floor.x + floor.width &&
-    position.y - MAP_PLAYER_VISIBLE_EXTENTS.top >= floor.y &&
-    position.y + MAP_PLAYER_VISIBLE_EXTENTS.bottom <= floor.y + floor.height;
-  return visibleInside && !collisions.some((collision) => overlaps(visible, collision));
+  const feetInside =
+    feet.x >= floor.x &&
+    feet.x + feet.width <= floor.x + floor.width &&
+    feet.y >= floor.y &&
+    feet.y + feet.height <= floor.y + floor.height;
+  return feetInside && !collisions.some((collision) => overlaps(feet, collision));
 }
 
 export function moveMapPlayer(
