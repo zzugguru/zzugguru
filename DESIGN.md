@@ -79,6 +79,18 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     rounded: "{rounded.lg}"
+  chapter-progress:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.md}"
+  chapter-card:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+  chapter-card-locked:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.md}"
   game-choice-button:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.text}"
@@ -167,6 +179,8 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 - 동일한 역할의 컴포넌트에는 동일한 radius를 적용한다.
 
 ## Components
+
+The chapter selection screen uses `chapter-progress` for a concise unlocked-count summary and `chapter-card` for each structured story entry. A card contains a chapter number, availability badge, title, premise, and action copy. `chapter-card-locked` keeps the same structure while displaying the prerequisite in visible text; disabled state is never communicated by color alone. Desktop uses a three-card row and narrow screens use a single-column reading order.
 
 - `game-canvas`는 게임 렌더링 영역의 크기, 표면 색상, 경계 형태를 정의한다.
 - `welcome-title`은 가장 높은 시각적 위계를 가진 시작 화면 제목이다.

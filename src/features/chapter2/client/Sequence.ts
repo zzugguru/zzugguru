@@ -31,6 +31,10 @@ export class Sequence {
     this.current.render(context, canvas);
   }
 
+  isComplete(): boolean {
+    return this.currentIndex === this.steps.length - 1 && this.current.isComplete();
+  }
+
   private advanceIfComplete(): void {
     if (!this.current.isComplete()) return;
 

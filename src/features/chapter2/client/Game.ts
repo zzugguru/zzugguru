@@ -36,6 +36,6 @@ export class Game {
 
   private readonly loop = (): void => {
     this.renderFrame(this.context, this.canvas);
-    this.animationId = requestAnimationFrame(this.loop);
+    if (this.animationId !== null) this.animationId = requestAnimationFrame(this.loop);
   };
 }
