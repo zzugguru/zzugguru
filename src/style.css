@@ -168,7 +168,6 @@ kbd {
 .chapter-menu button,
 .memory-choices button,
 .letting-go-choices button,
-.map-controls button,
 .return-button,
 .retry-button,
 .epilogue-next {
@@ -184,7 +183,6 @@ kbd {
 .chapter-menu button:focus-visible,
 .memory-choices button:focus-visible,
 .letting-go-choices button:focus-visible,
-.map-controls button:focus-visible,
 .return-button:focus-visible {
   outline: 3px solid #f9fafb;
   outline-offset: 2px;
@@ -201,8 +199,7 @@ kbd {
 }
 
 .memory-choices,
-.letting-go-choices,
-.map-controls {
+.letting-go-choices {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
@@ -213,17 +210,6 @@ kbd {
   display: none;
 }
 
-.map-controls {
-  grid-template-columns: repeat(3, 52px) 1fr;
-  align-items: center;
-}
-
-.map-controls .interact-button {
-  grid-column: 4;
-  grid-row: 1 / span 2;
-  min-height: 104px;
-}
-
 .return-button,
 .retry-button,
 .epilogue-next {
@@ -232,8 +218,7 @@ kbd {
 }
 
 .memory-choices button:disabled,
-.letting-go-choices button:disabled,
-.map-controls button:disabled {
+.letting-go-choices button:disabled {
   border-color: #374151;
   color: #c7d2fe;
   background: #111827;

@@ -29,7 +29,9 @@ describe('Chapter 3 narrative integration contract', () => {
     expect(source).toContain("../assets/interaction-objects.png");
     expect(source).toContain('drawFamilyNpcSprite(ctx, this.familyImages[npc.id], anchor)');
     expect(source).toContain("drawInteractionObject(ctx, this.objectImage, 'reconstruction-device'");
-    expect(source).toContain('if (collectionAvailable(this.flow)) this.drawMemoryArea();');
+    expect(source).toContain('if (collectionAvailable(this.flow) && !rescueAvailable(this.blackout.seen, this.rescue)) this.drawMemoryArea();');
+    expect(source).toContain('drawAlienFamilyNpc(ctx, this.alienFamilyImages[target.id], target)');
+    expect(source).toContain('const background = map.id === SPACESHIP_MAP.id ? this.spaceshipImage : this.memoryRoomImage;');
     expect(source).toContain('const epilogueBackground = selectEpilogueBackground');
   });
 });

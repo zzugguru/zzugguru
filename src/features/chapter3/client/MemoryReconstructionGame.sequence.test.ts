@@ -6,6 +6,7 @@ import { canActivateDevice, isMapPositionAllowed, transitionFlow, type Point } f
 import { SPACESHIP_MAP } from '../shared/mapAssetManifest';
 import { RESCUE_TARGETS } from '../shared/rescueLogic';
 import { WARNING_LINES } from '../shared/wardenWarningLogic';
+import { ARCHIVE_RECORDS, type EpilogueState } from '../shared/epilogueLogic';
 import { MemoryReconstructionGame } from './MemoryReconstructionGame';
 
 class FakeImage {
@@ -64,9 +65,6 @@ describe('MemoryReconstructionGame narrative sequence', () => {
       focus: vi.fn(),
     } as unknown as HTMLCanvasElement;
     const controls = {
-      map: { hidden: false },
-      directions: [fakeButton({ direction: 'up' }), fakeButton({ direction: 'down' }), fakeButton({ direction: 'left' }), fakeButton({ direction: 'right' })],
-      interact: fakeButton(),
       choices: { hidden: false },
       choiceButtons: [fakeButton(), fakeButton(), fakeButton()],
       returnButton: fakeButton(),
@@ -83,15 +81,30 @@ describe('MemoryReconstructionGame narrative sequence', () => {
       collection: { collected: readonly string[]; message: string; completed: boolean };
       rescue: { rescued: readonly string[]; completed: boolean };
       rescueOutro: string;
+      epilogue: EpilogueState;
+      pressed: Set<string>;
       interact: () => void;
+      enterArchive: () => void;
+      onCanvasClick: (event: MouseEvent) => void;
+      onKeyDown: (event: KeyboardEvent) => void;
+      onKeyUp: (event: KeyboardEvent) => void;
       returnToMap: () => void;
+      syncControls: () => void;
       loop: (time: number) => void;
     };
 
+    const preventDefault = vi.fn();
+    game.onKeyDown({ code: 'KeyW', preventDefault } as unknown as KeyboardEvent);
+    expect(game.pressed.has('up')).toBe(true);
+    expect(preventDefault).toHaveBeenCalled();
+    game.onKeyUp({ code: 'KeyW' } as KeyboardEvent);
+    expect(game.pressed.has('up')).toBe(false);
+
     game.player = deviceInteractionPosition();
-    game.interact();
+    game.onKeyDown({ code: 'KeyE', preventDefault } as unknown as KeyboardEvent);
     expect(game.screen).toBe('warning');
-    for (let index = 0; index < WARNING_LINES.length; index += 1) game.interact();
+    game.onCanvasClick({} as MouseEvent);
+    for (let index = 1; index < WARNING_LINES.length; index += 1) game.interact();
     game.loop(1_421);
     expect(game.screen).toBe('playing');
 
@@ -134,8 +147,22 @@ describe('MemoryReconstructionGame narrative sequence', () => {
     game.loop(1_421);
     expect(game.screen).toBe('letting-go');
     expect(controls.epilogueNext.focus).toHaveBeenCalled();
-    expect(controls.directions[0].focus).toHaveBeenCalled();
+    expect(canvas.focus).toHaveBeenCalled();
     expect(controls.lettingButtons[0].focus).toHaveBeenCalled();
     expect(controls.liveRegion.textContent).toContain('기억을 지우지 않되');
+
+    game.screen = 'epilogue';
+    game.epilogue = { phase: 'corridor', placed: [], step: 0, message: '복도' };
+    game.player = { x: 786, y: 227 };
+    game.syncControls();
+    expect(controls.liveRegion.textContent).toContain('E 또는 Enter로 입장');
+    game.onKeyDown({ code: 'KeyE', preventDefault } as unknown as KeyboardEvent);
+    expect(game.epilogue.phase).toBe('archive');
+    expect(canvas.focus).toHaveBeenCalled();
+
+    const record = ARCHIVE_RECORDS[0];
+    game.player = { x: record.x - 13, y: record.y - 13 };
+    game.syncControls();
+    expect(controls.liveRegion.textContent).toContain(`${record.name} 앞입니다. E 또는 Enter로 기록을 배치`);
   });
 });

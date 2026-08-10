@@ -3,7 +3,7 @@ import {
   advanceRescueDialogue, completeRescue, createRescue, nearbyRescueTarget,
   rescueAvailable, RESCUE_TARGETS, startRescueDialogue,
 } from './rescueLogic';
-import { MEMORY_ROOM_MAP } from './mapAssetManifest';
+import { SPACESHIP_MAP } from './mapAssetManifest';
 import { isMapPositionAllowed, type Point } from './mapLogic';
 
 function reachablePositions(start: Point, step = 4): readonly Point[] {
@@ -14,7 +14,7 @@ function reachablePositions(start: Point, step = 4): readonly Point[] {
     for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]] as const) {
       const next = { x: current.x + dx, y: current.y + dy };
       const key = `${next.x},${next.y}`;
-      if (visited.has(key) || !isMapPositionAllowed(next, MEMORY_ROOM_MAP)) continue;
+      if (visited.has(key) || !isMapPositionAllowed(next, SPACESHIP_MAP)) continue;
       visited.add(key);
       queue.push(next);
     }
@@ -80,9 +80,9 @@ describe('alien family rescue subsequence', () => {
     expect(rescue.rescued).toEqual(['father', 'mother', 'sister']);
   });
 
-  it('keeps every rescue target interactable through collision-free memory-room paths', () => {
-    expect(isMapPositionAllowed(MEMORY_ROOM_MAP.spawn, MEMORY_ROOM_MAP)).toBe(true);
-    const reachable = reachablePositions(MEMORY_ROOM_MAP.spawn);
+  it('keeps every rescue target interactable through collision-free spaceship paths', () => {
+    expect(isMapPositionAllowed(SPACESHIP_MAP.spawn, SPACESHIP_MAP)).toBe(true);
+    const reachable = reachablePositions(SPACESHIP_MAP.spawn);
     const rescue = createRescue();
 
     for (const target of RESCUE_TARGETS) {
