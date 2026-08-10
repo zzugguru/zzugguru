@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceEpilogue, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from './epilogueLogic';
+import { advanceEpilogue, ARCHIVE_RECORDS, createEpilogue, enterArchive, EPILOGUE_MOVE_BOUNDS, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from './epilogueLogic';
 import { createLettingGo } from './lettingGoLogic';
 
 describe('playable Chapter03 epilogue', () => {
@@ -45,6 +45,23 @@ describe('playable Chapter03 epilogue', () => {
     expect(moveEpiloguePlayer({ x: 786, y: 463 }, 20, 20, 'corridor')).toEqual({ x: 786, y: 463 });
     expect(moveEpiloguePlayer({ x: 100, y: 132 }, 20, 30)).toEqual({ x: 120, y: 162 });
     expect(moveEpiloguePlayer({ x: 881, y: 463 }, 20, 20, 'archive')).toEqual({ x: 881, y: 463 });
+  });
+
+  it('keeps the alpha-derived sprite footprint inside quarters and archive floors', () => {
+    const visibleFootprint = (position: { x: number; y: number }) => ({
+      left: position.x - 5,
+      top: position.y - 42,
+      right: position.x + 31,
+      bottom: position.y + 26,
+    });
+    expect(visibleFootprint({ x: EPILOGUE_MOVE_BOUNDS.corridor.minX, y: EPILOGUE_MOVE_BOUNDS.corridor.minY }))
+      .toEqual({ left: 150, top: 90, right: 186, bottom: 158 });
+    expect(visibleFootprint({ x: EPILOGUE_MOVE_BOUNDS.corridor.maxX, y: EPILOGUE_MOVE_BOUNDS.corridor.maxY }))
+      .toEqual({ left: 781, top: 421, right: 817, bottom: 489 });
+    expect(visibleFootprint({ x: EPILOGUE_MOVE_BOUNDS.archive.minX, y: EPILOGUE_MOVE_BOUNDS.archive.minY }))
+      .toEqual({ left: 48, top: 90, right: 84, bottom: 158 });
+    expect(visibleFootprint({ x: EPILOGUE_MOVE_BOUNDS.archive.maxX, y: EPILOGUE_MOVE_BOUNDS.archive.maxY }))
+      .toEqual({ left: 876, top: 421, right: 912, bottom: 489 });
   });
 
   it('advances exactly through montage, homeworld, journal, credits and postcredits', () => {

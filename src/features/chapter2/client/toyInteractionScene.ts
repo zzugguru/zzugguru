@@ -1,10 +1,14 @@
 import { isWithinRange } from '../shared/proximity';
-import { step, type Bounds } from '../shared/movement';
+import type { Bounds } from '../shared/movement';
+import { moveMapPlayer } from '../shared/mapMovement';
 import type { Vector2 } from '../shared/vector';
 import type { InputState } from './input';
 import type { Scene } from './Sequence';
+import { ALIEN_CHILDHOOD_ROOM, createLoadedImage } from './mapVisuals';
+import { drawPlayer, facingFromDirection, PLAYER_COLLISION_SIZE, type Facing } from './playerSprite';
 
-const PLAYER_SIZE = 24;
+const playerSpriteUrl = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
+
 const TOY_SIZE = 16;
 const INTERACTION_RADIUS = 48;
 
@@ -19,13 +23,23 @@ export class ToyInteractionScene implements Scene {
   private readonly toyPosition: Vector2 = { x: 640, y: 200 };
   private memoryTriggered = false;
   private readyToAdvance = false;
+  private facing: Facing = 'down';
+  private readonly backgroundImage = createLoadedImage(ALIEN_CHILDHOOD_ROOM.backgroundUrl);
+  private readonly playerImage = createLoadedImage(playerSpriteUrl);
 
   isComplete(): boolean {
     return this.readyToAdvance;
   }
 
-  update(input: InputState, deltaSeconds: number, bounds: Bounds): void {
-    this.playerPosition = step(this.playerPosition, input.direction, bounds, deltaSeconds);
+  update(input: InputState, deltaSeconds: number, _bounds: Bounds): void {
+    this.facing = facingFromDirection(input.direction, this.facing);
+    this.playerPosition = moveMapPlayer(
+      this.playerPosition,
+      input.direction,
+      deltaSeconds,
+      ALIEN_CHILDHOOD_ROOM.floor,
+      ALIEN_CHILDHOOD_ROOM.collisions,
+    );
 
     if (!input.wasConfirmJustPressed()) return;
 
@@ -44,11 +58,12 @@ export class ToyInteractionScene implements Scene {
   }
 
   render(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-    context.fillStyle = '#030712';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    context.fillStyle = '#111827';
-    context.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+    if (!this.drawBackground(context, canvas)) {
+      context.fillStyle = '#030712';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#111827';
+      context.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+    }
 
     context.fillStyle = '#F9FAFB';
     context.fillRect(
@@ -58,13 +73,15 @@ export class ToyInteractionScene implements Scene {
       TOY_SIZE,
     );
 
-    context.fillStyle = '#C7D2FE';
-    context.fillRect(
-      this.playerPosition.x - PLAYER_SIZE / 2,
-      this.playerPosition.y - PLAYER_SIZE / 2,
-      PLAYER_SIZE,
-      PLAYER_SIZE,
-    );
+    if (!drawPlayer(context, this.playerImage, this.playerPosition, this.facing)) {
+      context.fillStyle = '#C7D2FE';
+      context.fillRect(
+        this.playerPosition.x - PLAYER_COLLISION_SIZE / 2,
+        this.playerPosition.y - PLAYER_COLLISION_SIZE / 2,
+        PLAYER_COLLISION_SIZE,
+        PLAYER_COLLISION_SIZE,
+      );
+    }
 
     if (this.isPlayerNearToy && !this.memoryTriggered) {
       this.drawPrompt(context, 'Z : 장난감 조사하기');
@@ -73,6 +90,13 @@ export class ToyInteractionScene implements Scene {
     if (this.memoryTriggered && !this.readyToAdvance) {
       this.drawMemoryOverlay(context, canvas);
     }
+  }
+
+  private drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): boolean {
+    if (!this.backgroundImage?.complete || this.backgroundImage.naturalWidth === 0) return false;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(this.backgroundImage, 0, 0, canvas.width, canvas.height);
+    return true;
   }
 
   private drawPrompt(context: CanvasRenderingContext2D, text: string): void {

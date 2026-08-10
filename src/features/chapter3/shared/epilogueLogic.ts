@@ -30,6 +30,10 @@ export const JOURNAL_LINES = [
 ] as const;
 export const ARCHIVE_DOOR = { x: 850, y: 240 } as const;
 export const QUARTERS_SPAWN: Point = { x: 480, y: 300 };
+export const EPILOGUE_MOVE_BOUNDS = {
+  corridor: { minX: 155, maxX: 786, minY: 132, maxY: 463 },
+  archive: { minX: 53, maxX: 881, minY: 132, maxY: 463 },
+} as const;
 
 export function createEpilogue(): EpilogueState {
   return { phase: 'locked', placed: [], step: 0, message: '' };
@@ -75,9 +79,7 @@ export function moveEpiloguePlayer(
   dy: number,
   phase: 'corridor' | 'archive' = 'archive',
 ): Point {
-  const bounds = phase === 'corridor'
-    ? { minX: 155, maxX: 786, minY: 132, maxY: 463 }
-    : { minX: 53, maxX: 881, minY: 132, maxY: 463 };
+  const bounds = EPILOGUE_MOVE_BOUNDS[phase];
   return {
     x: Math.max(bounds.minX, Math.min(bounds.maxX, position.x + dx)),
     y: Math.max(bounds.minY, Math.min(bounds.maxY, position.y + dy)),

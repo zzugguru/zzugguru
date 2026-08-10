@@ -1,5 +1,6 @@
 import { isMapComplete, isPlayerNearObject, type MapObject } from '../shared/mapObject';
 import { step, type Bounds } from '../shared/movement';
+import { moveMapPlayer } from '../shared/mapMovement';
 import type { Vector2 } from '../shared/vector';
 import type { InputState } from './input';
 import type { Scene } from './Sequence';
@@ -13,8 +14,11 @@ export interface MapObjectDefinition extends MapObject {
   unlockedBy?: string[];
 }
 
-const PLAYER_SIZE = 24;
 const OBJECT_SIZE = 16;
+import { createLoadedImage, type MapVisual } from './mapVisuals';
+import { drawPlayer, facingFromDirection, PLAYER_COLLISION_SIZE, type Facing } from './playerSprite';
+
+const playerSpriteUrl = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
 
 /**
  * 오브젝트 배열로 정의된 맵을 재생하는 범용 씬. 필수(required) 오브젝트를 "전부" 상호작용해야 완료된다.
@@ -31,12 +35,17 @@ export class MapScene implements Scene {
   private playerPosition: Vector2;
   private readonly interactedIds = new Set<string>();
   private activeMessage: string | null = null;
+  private facing: Facing = 'down';
+  private readonly backgroundImage: HTMLImageElement | null;
+  private readonly playerImage = createLoadedImage(playerSpriteUrl);
 
   constructor(
     private readonly objects: MapObjectDefinition[],
     playerStart: Vector2,
+    private readonly visual?: MapVisual,
   ) {
     this.playerPosition = playerStart;
+    this.backgroundImage = visual ? createLoadedImage(visual.backgroundUrl) : null;
   }
 
   /** 어떤 오브젝트와 상호작용했는지 조회 — 다음 단계가 결과에 따라 갈라져야 할 때 사용. */
@@ -56,7 +65,16 @@ export class MapScene implements Scene {
       return;
     }
 
-    this.playerPosition = step(this.playerPosition, input.direction, bounds, deltaSeconds);
+    this.facing = facingFromDirection(input.direction, this.facing);
+    this.playerPosition = this.visual
+      ? moveMapPlayer(
+          this.playerPosition,
+          input.direction,
+          deltaSeconds,
+          this.visual.floor,
+          this.visual.collisions,
+        )
+      : step(this.playerPosition, input.direction, bounds, deltaSeconds);
 
     if (!input.wasConfirmJustPressed()) return;
 
@@ -71,23 +89,26 @@ export class MapScene implements Scene {
   }
 
   render(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-    context.fillStyle = '#030712';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    context.fillStyle = '#111827';
-    context.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+    if (!this.drawBackground(context, canvas)) {
+      context.fillStyle = '#030712';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#111827';
+      context.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+    }
 
     for (const object of this.objects) {
       this.renderObject(context, object);
     }
 
-    context.fillStyle = '#C7D2FE';
-    context.fillRect(
-      this.playerPosition.x - PLAYER_SIZE / 2,
-      this.playerPosition.y - PLAYER_SIZE / 2,
-      PLAYER_SIZE,
-      PLAYER_SIZE,
-    );
+    if (!drawPlayer(context, this.playerImage, this.playerPosition, this.facing)) {
+      context.fillStyle = '#C7D2FE';
+      context.fillRect(
+        this.playerPosition.x - PLAYER_COLLISION_SIZE / 2,
+        this.playerPosition.y - PLAYER_COLLISION_SIZE / 2,
+        PLAYER_COLLISION_SIZE,
+        PLAYER_COLLISION_SIZE,
+      );
+    }
 
     if (this.activeMessage !== null) {
       this.renderMessageOverlay(context, canvas, this.activeMessage);
@@ -105,6 +126,13 @@ export class MapScene implements Scene {
         promptTarget.position.y - OBJECT_SIZE,
       );
     }
+  }
+
+  private drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): boolean {
+    if (!this.backgroundImage?.complete || this.backgroundImage.naturalWidth === 0) return false;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(this.backgroundImage, 0, 0, canvas.width, canvas.height);
+    return true;
   }
 
   private findInteractable(): MapObjectDefinition | undefined {

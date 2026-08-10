@@ -1,16 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { assetProcessingReport, MAP_ASSET_MANIFEST, MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, validateMapAssetManifest, type MapAssetEntry } from './mapAssetManifest';
-import { canInteract, overlaps, PLAYER_SIZE } from './mapLogic';
+import { canInteract, isMapPositionAllowed, overlaps, PLAYER_SIZE } from './mapLogic';
 
 function reachableFloor(map: typeof MEMORY_ROOM_MAP | typeof SPACESHIP_MAP): { x: number; y: number }[] {
   const step = 5;
   const start = { x: Math.round(map.spawn.x / step) * step, y: Math.round(map.spawn.y / step) * step };
   const queue = [start]; const visited = new Set([`${start.x},${start.y}`]);
-  const open = (x: number, y: number) => {
-    const body = { x, y, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    return x >= map.bounds.x && y >= map.bounds.y && x + PLAYER_SIZE <= map.bounds.x + map.bounds.width
-      && y + PLAYER_SIZE <= map.bounds.y + map.bounds.height && !map.collisions.some((collision) => overlaps(body, collision));
-  };
+  const open = (x: number, y: number) => isMapPositionAllowed({ x, y }, map);
   for (let index = 0; index < queue.length; index += 1) {
     const point = queue[index];
     for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]] as const) {
@@ -22,6 +18,35 @@ function reachableFloor(map: typeof MEMORY_ROOM_MAP | typeof SPACESHIP_MAP): { x
 }
 
 describe('Chapter03 map asset manifest', () => {
+  it('shrinks every mapped object around its center by ten percent', () => {
+    const rooms = [
+      [SPACESHIP_MAP, [
+        { x: 170, y: 91, width: 220, height: 76 }, { x: 170, y: 365, width: 220, height: 68 },
+        { x: 443, y: 72, width: 54, height: 116 }, { x: 445, y: 318, width: 54, height: 110 },
+        { x: 630, y: 178, width: 185, height: 184 }, { x: 608, y: 392, width: 240, height: 55 },
+      ]],
+      [MEMORY_ROOM_MAP, [
+        { x: 210, y: 108, width: 90, height: 92 }, { x: 345, y: 66, width: 165, height: 122 },
+        { x: 630, y: 39, width: 100, height: 141 }, { x: 756, y: 75, width: 124, height: 127 },
+        { x: 113, y: 218, width: 66, height: 92 }, { x: 183, y: 348, width: 62, height: 48 },
+        { x: 358, y: 257, width: 125, height: 69 }, { x: 308, y: 338, width: 221, height: 79 },
+        { x: 682, y: 235, width: 118, height: 116 }, { x: 659, y: 405, width: 112, height: 82 },
+      ]],
+    ] as const;
+
+    for (const [room, sources] of rooms) {
+      expect(room.collisions).toHaveLength(sources.length);
+      room.collisions.forEach((collision, index) => {
+        const source = sources[index];
+        expect(collision.width).toBeCloseTo(source.width * 0.9);
+        expect(collision.height).toBeCloseTo(source.height * 0.9);
+        expect(collision.x + collision.width / 2).toBeCloseTo(source.x + source.width / 2);
+        expect(collision.y + collision.height / 2).toBeCloseTo(source.y + source.height / 2);
+      });
+    }
+    expect(SPACESHIP_MAP.device!.bounds).toBe(SPACESHIP_MAP.collisions[4]);
+  });
+
   it('registers every runtime background as verified and valid', () => {
     expect(MAP_ASSET_MANIFEST.map((entry) => entry.id)).toEqual([
       'chapter03-spaceship-lab', 'chapter03-memory-room-v2',
