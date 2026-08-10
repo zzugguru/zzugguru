@@ -24,8 +24,9 @@ import {
   type Chapter01Backdrop,
   type Chapter01StoryBeat,
 } from '../shared/chapter01Story';
-import { getContainedRasterGeometry } from '../shared/chapter01Assets';
+import { getCoverRasterGeometry } from '../shared/chapter01Assets';
 import { drawChapter01TopViewSprite } from './chapter01TopViewSprite';
+import { getChapter01WhiteoutPresentation } from './chapter01Whiteout';
 
 const COLORS = {
   background: '#030712',
@@ -328,6 +329,7 @@ export class Chapter1StoryGame {
     const beat = CHAPTER01_STORY[this.currentIndex];
     this.drawBackdrop(beat);
     this.drawHeader(beat);
+    if (beat.backdrop === 'whiteout' && this.currentIndex >= 40) this.drawWhiteoutInterference();
 
     if (beat.backdrop === 'title') this.drawTitle();
     else this.drawStoryPanel(beat);
@@ -453,12 +455,13 @@ export class Chapter1StoryGame {
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.titleImage?.complete && this.titleImage.naturalWidth > 0) {
-      const geometry = getContainedRasterGeometry(
+      const geometry = getCoverRasterGeometry(
         this.titleImage.naturalWidth,
         this.titleImage.naturalHeight,
         this.canvas.width,
         this.canvas.height,
-        0,
+        0.5,
+        0.25,
       );
       this.context.imageSmoothingEnabled = true;
       this.context.drawImage(this.titleImage, geometry.x, geometry.y, geometry.width, geometry.height);
@@ -579,7 +582,8 @@ export class Chapter1StoryGame {
   }
 
   private drawWhiteout(): void {
-    const phase = Math.max(0, this.currentIndex - 39);
+    const presentation = getChapter01WhiteoutPresentation(this.currentIndex, this.animationSeconds);
+    const phase = presentation.phase;
     const pulse = 0.5 + (Math.sin(this.animationSeconds * 4) + 1) * 0.25;
     const centerY = 142 + phase * 18;
     const gradient = this.context.createRadialGradient(480, centerY, 8, 480, centerY, 520);
@@ -589,27 +593,55 @@ export class Chapter1StoryGame {
     this.context.fillStyle = gradient;
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.context.save();
-    this.context.globalAlpha = 0.16 + phase * 0.1;
-    this.context.fillStyle = COLORS.text;
-    for (let index = 0; index < 12; index += 1) {
-      const width = 80 + ((index * 97) % 260);
-      const x = (index * 173 + Math.floor(this.animationSeconds * 90)) % (this.canvas.width + width) - width;
-      const y = 42 + index * 25;
-      this.context.fillRect(x, y, width, 2 + (index % 3));
+    if (phase === 0) {
+      this.context.save();
+      this.context.globalAlpha = 0.16;
+      this.context.fillStyle = COLORS.text;
+      for (let index = 0; index < 12; index += 1) {
+        const width = 80 + ((index * 97) % 260);
+        const x = (index * 173 + Math.floor(this.animationSeconds * 90)) % (this.canvas.width + width) - width;
+        const y = 42 + index * 25;
+        this.context.fillRect(x, y, width, 2 + (index % 3));
+      }
+      this.context.restore();
     }
-    this.context.restore();
 
     const exploration = this.activeExploration;
     if (exploration?.scene === 'whiteout') this.drawExplorationTarget(exploration);
 
-    const renderPosition = phase === 0
-      ? this.playerPosition
-      : { x: 480 + Math.sin(this.animationSeconds * 10) * (4 + phase * 3), y: 260 - phase * 48 };
+    const renderPosition = presentation.character ?? this.playerPosition;
     this.context.save();
-    this.context.globalAlpha = Math.max(0.34, 0.9 - phase * 0.22);
+    this.context.globalAlpha = presentation.character?.opacity ?? 0.9;
     this.drawBoundedTopViewSprite(renderPosition, phase === 0 ? this.playerFacing : 'up', COLORS.background, 'whiteout');
     this.context.restore();
+  }
+
+  private drawWhiteoutInterference(): void {
+    const presentation = getChapter01WhiteoutPresentation(this.currentIndex, this.animationSeconds);
+    if (presentation.glitchIntensity === 0) return;
+
+    const context = this.context;
+    context.save();
+    context.globalAlpha = presentation.glitchIntensity * 0.22;
+    context.fillStyle = COLORS.background;
+    for (let y = presentation.scanlineOffset; y < PANEL.y; y += 6) {
+      context.fillRect(0, y, this.canvas.width, 2);
+    }
+
+    for (let index = 0; index < 9; index += 1) {
+      const y = (index * 61 + presentation.scanlineOffset * 13) % PANEL.y;
+      const height = Math.min(2 + (index % 4) * 3, PANEL.y - y);
+      const inset = (index * 83) % 190;
+      context.globalAlpha = presentation.glitchIntensity * (index % 3 === 0 ? 0.36 : 0.2);
+      context.fillStyle = index % 3 === 0 ? COLORS.danger : index % 2 === 0 ? COLORS.feedback : COLORS.text;
+      context.fillRect(
+        inset + presentation.tearOffset,
+        y,
+        this.canvas.width - inset * 2,
+        height,
+      );
+    }
+    context.restore();
   }
 
   private drawHeader(beat: Chapter01StoryBeat): void {
