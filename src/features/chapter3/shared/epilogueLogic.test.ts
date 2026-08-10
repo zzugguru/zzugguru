@@ -33,9 +33,9 @@ describe('playable Chapter03 epilogue', () => {
   });
 
   it('moves through the corridor with visible-map bounds', () => {
-    expect(moveEpiloguePlayer({ x: 48, y: 100 }, -20, -20)).toEqual({ x: 48, y: 100 });
-    expect(moveEpiloguePlayer({ x: 886, y: 466 }, 20, 20)).toEqual({ x: 886, y: 466 });
-    expect(moveEpiloguePlayer({ x: 100, y: 100 }, 20, 30)).toEqual({ x: 120, y: 130 });
+    expect(moveEpiloguePlayer({ x: 49, y: 115 }, -20, -20)).toEqual({ x: 49, y: 115 });
+    expect(moveEpiloguePlayer({ x: 885, y: 463 }, 20, 20)).toEqual({ x: 885, y: 463 });
+    expect(moveEpiloguePlayer({ x: 100, y: 115 }, 20, 30)).toEqual({ x: 120, y: 145 });
   });
 
   it('advances exactly through montage, homeworld, journal, credits and postcredits', () => {

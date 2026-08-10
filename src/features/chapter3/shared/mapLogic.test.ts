@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canActivateDevice, canInteract, clearDirections, createFlow, MAP_BOUNDS, movePlayer, PLAYER_SIZE, PLAYER_SPRITE_TOP_OVERHANG, transitionFlow } from './mapLogic';
+import { canActivateDevice, canInteract, clearDirections, createFlow, MAP_BOUNDS, movePlayer, PLAYER_SIZE, PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG, transitionFlow } from './mapLogic';
 import { MEMORY_ROOM_MAP, SPACESHIP_MAP } from './mapAssetManifest';
 
 describe('Chapter03 research lab map', () => {
@@ -15,6 +15,7 @@ describe('Chapter03 research lab map', () => {
   });
 
   it('keeps the visible sprite inside both background borders', () => {
+    expect([PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG]).toEqual([1, 25]);
     for (const map of [SPACESHIP_MAP, MEMORY_ROOM_MAP]) {
       const topmost = { x: map.bounds.x + 30, y: map.bounds.y + PLAYER_SPRITE_TOP_OVERHANG };
       expect(movePlayer(topmost, 0, -1, map)).toEqual(topmost);
@@ -22,10 +23,13 @@ describe('Chapter03 research lab map', () => {
       const bottommost = { x: map.bounds.x + 30, y: map.bounds.y + map.bounds.height - PLAYER_SIZE };
       expect(movePlayer(bottommost, 0, 1, map)).toEqual(bottommost);
 
-      const leftmost = { x: map.bounds.x, y: map.bounds.y + 100 };
+      const leftmost = { x: map.bounds.x + PLAYER_SPRITE_SIDE_OVERHANG, y: map.bounds.y + 100 };
       expect(movePlayer(leftmost, -1, 0, map)).toEqual(leftmost);
 
-      const rightmost = { x: map.bounds.x + map.bounds.width - PLAYER_SIZE, y: map.bounds.y + 100 };
+      const rightmost = {
+        x: map.bounds.x + map.bounds.width - PLAYER_SIZE - PLAYER_SPRITE_SIDE_OVERHANG,
+        y: map.bounds.y + 100,
+      };
       expect(movePlayer(rightmost, 1, 0, map)).toEqual(rightmost);
     }
   });
