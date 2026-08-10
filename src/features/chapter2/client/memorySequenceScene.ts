@@ -49,7 +49,7 @@ export class MemorySequenceScene implements Scene {
     context.fillStyle = '#C7D2FE';
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
     context.fillText(
-      `Z ▶ 다음 기억 (${this.index + 1}/${this.fragments.length})`,
+      `E/Enter ▶ 다음 기억 (${this.index + 1}/${this.fragments.length})`,
       canvas.width / 2,
       FRAME.y + FRAME.height + 80,
     );

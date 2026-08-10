@@ -1,6 +1,6 @@
 # Current Logic Work Brief
 
-이 파일은 로직 작업 전용 요청, 질문, 결정과 결과를 공유하는 단일 창구입니다. 에셋 작업은 `BRIEF_ASSET.md`에서 독립적으로 관리합니다.
+이 파일은 로직 작업 전용 계약입니다. CCTV 이미지 제작은 `BRIEF_ASSET.md`에서 별도 에셋 세션이 담당합니다.
 
 ## Status
 
@@ -39,81 +39,69 @@ Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign 
 
 ### Task
 
-Chapter 3 하단 마우스 이동·상호작용 인터페이스 제거
+Chapter 2 CCTV 채널 진행과 2D 화면 연출 개발
 
 ### Goal
 
-Chapter 3 게임 하단에 표시되는 방향 버튼과 상호작용 버튼을 제거해 Canvas와 키보드 중심 인터페이스로 단순화한다.
+빈 단색 CCTV 화면을 채널별 2D 그림이 표시되는 장면으로 발전시키고, 채널 순환과 불명확한 다음 행동을 수정한다.
 
 ### Included Scope
 
-- 하단 `▲ ◀ ▼ ▶` 방향 버튼 제거
-- 하단 상황별 상호작용 버튼 제거
-- 관련 pointer 및 click 이벤트 연결과 UI 상태 업데이트 제거
-- 맵·개인실 복도·기록 보관소 진입 시 Canvas로 포커스 이동
-- 안내 문구를 키보드 입력 기준으로 수정
+- 채널 이동을 1/3~3/3 경계에서 정지시켜 순환 방지
+- 정답 채널 확인·독백 종료 후 다음 목표 채널로 자동 이동
+- `다음 CCTV 화면으로 이동했습니다` 상태 피드백 표시
+- 잘못된 채널 확인 피드백과 현재 진행 단계 표시
+- 에셋 세션이 제공할 3개 이미지를 명시적 채널 매핑으로 로드·렌더링
+- 이미지 로딩 실패 시 기존 단색 화면 fallback 유지
+- 스캔라인, 채널명, 시간, 신호 상태 HUD를 Canvas로 표시
+- E/Enter·클릭 확인과 좌우 방향키 유지
 
 ### Excluded Scope
 
-- 방향키/WASD, E/Enter 키보드 입력 변경
-- Canvas 클릭으로 대사·장면 진행하는 기존 동작 변경
-- 가족 선택, 놓아주기 선택, 다음, 재시도, 복귀 버튼 제거
-- 게임 로직, 에셋, 좌표와 장면 흐름 변경
+- CCTV 이미지 생성·편집
+- Chapter 2 다른 장면·게임 흐름·에셋 변경
+- Chapter 1·3 변경
 
-### Constraints
+### Asset Contract
 
-- `AGENTS.md`, `DESIGN.md`, `$two-agent-harness`를 따른다.
-- 키보드 사용자가 맵 진입 시 즉시 조작할 수 있도록 Canvas 포커스를 유지한다.
-- 다른 챕터 UI와 Chapter 3의 비이동 선택 버튼은 유지한다.
+- `src/features/chapter2/assets/cctv-parking-memory.png`
+- `src/features/chapter2/assets/cctv-lobby-memory.png`
+- `src/features/chapter2/assets/cctv-guard-door-memory.png`
+- 각 파일은 600×340 RGB/RGBA PNG이며 글자·UI·프레임을 이미지에 굽지 않는다.
 
 ### Done When
 
-- [ ] DOM과 CSS에서 `.map-controls`, 방향 버튼, 상호작용 버튼이 제거된다.
-- [ ] `MemoryReconstructionGame`이 해당 요소 없이 생성·실행된다.
-- [ ] 방향키/WASD, E/Enter와 기존 진행 버튼이 유지된다.
-- [ ] 맵·복도·보관소 전환 시 Canvas가 포커스를 받는다.
+- [ ] 1/3에서 왼쪽, 3/3에서 오른쪽 입력이 채널을 순환시키지 않는다.
+- [ ] 각 정답 확인 후 독백을 닫으면 다음 목표 채널과 명확한 피드백이 표시된다.
+- [ ] 세 채널에 대응하는 2D 그림과 CCTV HUD가 표시된다.
+- [ ] 이미지 실패 시 fallback 화면과 전체 진행이 유지된다.
+- [ ] 마지막 3/3 확인 후에만 장면이 완료된다.
 - [ ] 필수 검사와 Terra 독립 리뷰가 완료된다.
 
 ## Agent Understanding
 
-> 메인 에이전트 소유 영역입니다. 구현 전에 이해한 목표, 범위와 완료 조건을 기록합니다.
-
-기존 요청의 개발자 확인 피드백으로 Chapter 1 스토리 화면의 다섯 문제를 함께 보완한다. 축소된 캔버스에서 글자가 계단처럼 깨지는 원인인 캔버스 전체 `pixelated` 확대·축소를 제거하되 탑뷰 스프라이트·맵 자체의 nearest-neighbor 렌더링은 유지한다. 01번 타이틀은 기존 영수 야간 경비 이미지를 종횡비 보존 cover 방식으로 960×540 전체에 채운다. 경비실·지하 탐색은 Chapter 3과 같은 플레이어 충돌 바디와 장면별 가구·벽 충돌 영역을 적용해 오브젝트 위를 통과하지 못하게 하면서 시작점과 목표의 도달성을 유지한다. 41·42번 화이트아웃은 캐릭터 좌우 흔들림을 제거하고 같은 시간축의 화면 지지직·수평 노이즈가 연속되며 42번에서 더 강해지도록 만든다. 기존 대사·입력·진행 게이트·옥상 탈출 연결은 유지한다.
+로직 세션은 기존 채널 상태 머신, 경계 이동과 진행 피드백을 보존하면서 에셋 세션이 제공한 600×340 PNG 3개를 지하주차장→1층 로비→경비실 앞 채널에 명시적으로 매핑한다. 유효한 이미지는 600×340 native size로 렌더링하고 채널명·시간·신호·스캔라인 HUD는 Canvas로 덧씌운다. 로딩 실패나 오규격 이미지에서는 기존 단색 화면 fallback과 전체 진행을 유지한다.
 
 ## Agent Questions
 
-- 2026-08-10: Developer approved a new bounded run to resolve the held-key OS repeat edge case across floor transitions.
-
-- 2026-08-10: After two bounded review-fix iterations, one P2 remains: an OS repeat keydown from a direction/crawl key physically held across a floor transition can reactivate stale movement. The next fix needs a suppressed-until-keyup set plus a repeat-event regression test. Developer approval is required to start another bounded run.
-
-- 2026-08-10: The active Developer Request still targets removal of Chapter 3 mouse controls, while the current user request targets Chapter 1 control parity and a three-stage escape redesign. Please replace or reconcile the developer-owned request and acceptance criteria before implementation.
-
-> 메인 에이전트 소유 영역입니다. 개발자의 판단이 필요한 질문과 확인 상태를 기록합니다.
-
-없음. “01·41·42 화면”은 헤더에 표시되는 1-based 스토리 화면 번호로 해석한다. 01번 배경은 새 래스터를 만들지 않고 이미 승인된 공통 영수 야간 경비 그림을 초점 보존 cover로 사용한다. “오브젝트 위”는 탐색이 실제로 가능한 경비실 02번과 지하 11번 탑뷰 장면의 책상·의자·수납장·벽·계단 같은 비보행 영역을 의미하며, 목표는 오브젝트 앞의 접근 가능한 바닥으로 조정한다.
+해결됨. `BRIEF_ASSET.md` 에셋 세션이 지정된 600×340 RGB PNG 3개를 생성했고 사용자가 CCTV 적용을 요청해 로직 세션을 재개했다.
 
 ## Developer Decisions
 
-- 2026-08-10: 로직 작업은 `BRIEF.md`, 에셋 작업은 `BRIEF_ASSET.md`를 사용하며 별도 세션에서 진행한다.
-- 2026-08-10: Chapter 3 하단 방향·상호작용 버튼은 제거하되 키보드와 나머지 진행 버튼은 유지한다.
+- 2026-08-10: 로직은 `BRIEF.md`, 이미지 생성은 `BRIEF_ASSET.md`의 별도 세션이 담당한다.
+- 2026-08-10: CCTV 장면은 지하주차장→1층 로비→경비실 앞 순서이며 채널 이동은 양 끝에서 순환하지 않는다.
 
 ## Agent Result
 
-- Completed the active Chapter 1 logic request. Story movement remains Arrow/WASD and interaction/advance now uses E/Enter instead of Z, with matching canvas and live-region guidance. The escape is three progressive stages: 1F pursuit, 2F jump, 3F jump plus crawl. Monster speed is 158 + 18 per stage; wrong actions block passage and cause a 0.62s stumble, while a tested 60Hz correct-action route remains winnable. Start/retry uses E/Enter, pointer movement was removed, and held aliases plus OS repeat across transitions are safely managed until keyup. Chapter 2/3 were not changed by this task. Checks passed: typecheck, focused 23 tests, full 62 files/281 tests, build, diff check. Independent review findings for restart guidance, multi-key aliases, transition cleanup, and OS repeat suppression were fixed and reverified with no remaining findings. Residual: browser play-feel and OS-specific repeat timing were not manually exercised.
-
-- Blocked after the two-iteration limit: implementation and required checks pass, and the original restart-announcement, multi-key alias, and immediate transition cleanup findings were fixed. One repeat-key transition edge case remains as documented in Agent Questions; do not treat this logic lane as complete yet.
-
-- In review: Chapter 1 story input now uses E/Enter instead of Z. The final escape has three stages (basic pursuit, jump, jump+crawl), a faster monster, missed-action stumble penalties, keyboard-only movement/action play, visual obstacle cues, and focused route/boundary tests. Chapter 2 and Chapter 3 files were not modified by this task. Required checks passed before independent review: typecheck, 62 test files/281 tests, build, and diff check.
-
-> 메인 에이전트 소유 영역입니다. 구현 결과, 검사 결과, 리뷰 대응과 남은 위험을 기록합니다.
-
-Chapter 1 스토리의 반응형 표시, 01번 배경, 탐색 충돌, 41·42번 화이트아웃을 보완했다. 전역 캔버스의 `image-rendering`을 `auto`로 바꿔 좁은 화면에서 텍스트까지 픽셀 단위로 축소되던 현상을 제거했으며, 탑뷰 맵과 스프라이트 렌더러 내부의 smoothing 비활성화는 유지했다. 01번은 1024×1024 공통 영수 야간 경비 그림을 960×960, `y=-105`의 초점 보존 cover로 그려 960×540 화면 전체를 빈 영역 없이 채운다.
-
-경비실과 지하 탐색 정의에 26×26 발밑 충돌 바디와 실제 가구·벽·계단의 장면별 사각 충돌 영역을 추가했다. 이동은 Chapter 3처럼 X축과 Y축 후보를 각각 검사해 막힌 축만 정지하며, 시작점과 상호작용 목표를 안전한 바닥으로 옮겼다. 모든 시작점·목표의 허용 여부, 모든 오브젝트 내부 거절, 가구 가장자리 정지, 포인터 도달성과 실제 60Hz 방향키 경로를 회귀 테스트로 검증한다.
-
-41번과 42번은 영수 스프라이트를 `(480,212)`에 고정해 시간에 따른 좌우 흔들림을 제거했다. 두 화면은 초기화되지 않는 `animationSeconds`를 공유해 같은 scanline·tear 노이즈가 이어지고, 42번에서 강도와 영수 페이드만 높아진다. 노이즈는 대사 패널 전에 렌더하고 y=372 위로 제한해 텍스트를 덮지 않는다. 01번 실제 브라우저 화면이 전체 그림으로 채워지고 `image-rendering: auto`가 적용된 것, 경비실 탑뷰의 맵·대사·캐릭터 합성과 콘솔 오류 부재를 확인했다.
-
-최종 검사는 `npm run typecheck`, `npm run test`(50개 파일·238개 테스트), `npm run build`, `npm run design:lint`, `git diff --check`가 통과했다. 디자인 린트에는 기존 미사용 `border`·`shadow` 경고 2건만 남았다. 독립 리뷰는 처음에 2px 충돌 통로 때문에 60Hz 키보드가 막힐 수 있는 P1과 노이즈가 대사 패널을 덮는 P2를 발견했다. 캐비닛 충돌을 실제 시각 경계에 맞춰 통로 중심 폭 44px로 넓히고, 60Hz 키보드 경로 및 노이즈 경계·렌더 순서 테스트를 추가했다. 같은 리뷰어의 재검증에서 두 건 모두 해결됐으며 새 발견은 없었다. 남은 위험은 인앱 백그라운드 탭에서 연속 애니메이션 프레임이 진행되지 않아 41·42번의 장시간 실제 화면 품질은 자동 렌더러 검증으로만 확인했다는 점이다.
+- CCTV 채널 이동을 1/3~3/3 경계에서 고정하고, 정답 독백 종료 시 다음 목표 채널 자동 선택, 다음 화면·잘못된 화면·진행 단계 피드백을 유지했다.
+- `cctv-parking-memory.png`, `cctv-lobby-memory.png`, `cctv-guard-door-memory.png`를 지하주차장→1층 로비→경비실 앞에 명시적으로 매핑하고 Vite `new URL(..., import.meta.url)` 경로로 로드한다.
+- 유효한 이미지는 원본과 같은 600×340 크기로 화면 `(180,80)`에 nearest-neighbor 렌더링한다. 미로딩·오규격 이미지는 기존 `#111827` 단색 화면을 유지하며 진행 상태와 입력에는 영향을 주지 않는다.
+- 채널 번호·장소, 관측 시간, 단계별 신호 상태와 4px 간격 스캔라인은 이미지가 아닌 Canvas HUD로 덧씌우고, 독백 오버레이가 가장 마지막에 그려져 HUD를 가리도록 유지했다.
+- 조작 안내는 Chapter 2 공통 입력인 `E/Enter`를 표시하며 shared `InputState`를 통한 클릭 확인과 좌우 채널 입력도 유지된다.
+- 테스트 15개가 에셋 순서, native draw, 로딩·치수 실패, fallback 패널, Canvas HUD, 양끝 경계, 오답, 자동 이동과 최종 완료를 검증한다.
+- 필수 검사: `npm run typecheck`, `npm run test`(62개 파일·300개 테스트), `npm run build`(세 PNG 번들 포함), `git diff --check` 모두 통과했다.
+- Terra 독립 리뷰에서 finding이 없었고 채널 매핑, fallback, HUD 그리기 순서, E/Enter·클릭 및 진행 회귀를 확인했다.
+- 남은 위험: 제어 가능한 브라우저에서 실제 Canvas 대비와 이미지 로딩 순간을 캡처하지 못해 소스·에셋·단위 테스트 검증으로 대체했다.
 
 ## Developer Final Check
 

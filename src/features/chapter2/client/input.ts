@@ -1,9 +1,9 @@
 import type { Direction } from '../shared/movement';
 
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
-const CONFIRM_KEYS = new Set(['z', 'Z']);
+const CONFIRM_KEYS = new Set(['e', 'E', 'Enter']);
 const CANCEL_KEYS = new Set(['x', 'X']);
-const CONFIRM_CODE = 'KeyZ';
+const CONFIRM_CODES = new Set(['KeyE', 'Enter']);
 const CANCEL_CODE = 'KeyX';
 const CONFIRM_TOKEN = 'confirm';
 const CANCEL_TOKEN = 'cancel';
@@ -32,7 +32,7 @@ export class InputState {
       return;
     }
 
-    if (event.code === CONFIRM_CODE || CONFIRM_KEYS.has(event.key)) {
+    if (CONFIRM_CODES.has(event.code) || CONFIRM_KEYS.has(event.key)) {
       if (!this.pressed.has(CONFIRM_TOKEN)) this.confirmJustPressed = true;
       this.pressed.add(CONFIRM_TOKEN);
       event.preventDefault();
@@ -48,7 +48,7 @@ export class InputState {
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
     this.pressed.delete(event.key);
-    if (event.code === CONFIRM_CODE || CONFIRM_KEYS.has(event.key)) this.pressed.delete(CONFIRM_TOKEN);
+    if (CONFIRM_CODES.has(event.code) || CONFIRM_KEYS.has(event.key)) this.pressed.delete(CONFIRM_TOKEN);
     if (event.code === CANCEL_CODE || CANCEL_KEYS.has(event.key)) this.pressed.delete(CANCEL_TOKEN);
   };
 
@@ -65,7 +65,7 @@ export class InputState {
     };
   }
 
-  /** Z 또는 마우스 클릭 — 진행/확인 액션. */
+  /** E, Enter 또는 마우스 클릭 — 진행/확인 액션. */
   wasConfirmJustPressed(): boolean {
     return this.confirmJustPressed;
   }

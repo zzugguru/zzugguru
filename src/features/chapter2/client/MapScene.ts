@@ -146,7 +146,7 @@ export class MapScene implements Scene {
       context.fillStyle = '#F9FAFB';
       context.textAlign = 'center';
       context.fillText(
-        `Z : ${promptTarget.label}`,
+        `E/Enter : ${promptTarget.label}`,
         promptPosition.x,
         promptPosition.y,
       );
@@ -214,6 +214,6 @@ export class MapScene implements Scene {
 
     context.fillStyle = '#C7D2FE';
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText('Z ▶ 계속', canvas.width / 2, canvas.height / 2 + 40);
+    context.fillText('E/Enter ▶ 계속', canvas.width / 2, canvas.height / 2 + 40);
   }
 }

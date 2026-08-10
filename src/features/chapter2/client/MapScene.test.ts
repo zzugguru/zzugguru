@@ -125,6 +125,7 @@ describe('MapScene', () => {
 
     scene.render(context, canvas);
     expect(context.fillText).toHaveBeenCalledWith('전망창 제어장치', 100, 124);
+    expect(context.fillText).toHaveBeenCalledWith('E/Enter : 조사하기', 100, 148);
 
     scene.update(createInput(noDirection, true), 0.016, bounds);
     scene.render(context, canvas);

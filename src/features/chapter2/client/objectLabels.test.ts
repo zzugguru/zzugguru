@@ -44,7 +44,7 @@ describe('Chapter 2 persistent object labels', () => {
     const renderedText = vi.mocked(context.fillText).mock.calls.map(([text]) => text);
 
     expect(renderedText).toContain('기록실 출구');
-    expect(renderedText).not.toContain('Z : 기록 그만 보기');
+    expect(renderedText).not.toContain('E/Enter : 기록 그만 보기');
   });
 
   it('shows the toy completion name inside the opaque memory overlay', () => {
@@ -58,6 +58,9 @@ describe('Chapter 2 persistent object labels', () => {
 
     scene.update(input({ ...stopped, right: true }), 1.5, canvas);
     scene.update(input({ ...stopped, up: true }), 0.525, canvas);
+    const promptContext = createContext();
+    scene.render(promptContext, canvas);
+    expect(promptContext.fillText).toHaveBeenCalledWith('E/Enter : 장난감 조사하기', 640, 180);
     scene.update(input(stopped, true), 0, canvas);
 
     const context = createContext();

@@ -37,6 +37,6 @@ export class DutyLogReadingScene implements Scene {
     if (this.finished) return;
 
     renderPhotoFrame(context, canvas);
-    renderDialogueBox(context, canvas, LINES[this.index], 'Z ▶ 다음');
+    renderDialogueBox(context, canvas, LINES[this.index], 'E/Enter ▶ 다음');
   }
 }
