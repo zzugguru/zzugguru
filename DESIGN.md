@@ -99,6 +99,13 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
+  rooftop-escape-progress:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.feedback}"
+  rooftop-escape-control:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
 ---
 
 # ZZUGGURU Design System
@@ -164,6 +171,8 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 버튼, HUD, 패널 등 아직 구현되지 않은 컴포넌트는 미리 추측해 정의하지 않는다. 처음 추가할 때 상태와 접근성 요구사항을 함께 정의한다.
 
 ## Do's and Don'ts
+
+`rooftop-escape-progress`는 Chapter 01 층별 옥상 탈출 진행도를 표시한다. `rooftop-escape-control`은 키보드와 같은 좌우 이동을 제공하는 캔버스 화면 조작 영역이며, `feedback`은 진행 방향, `danger`는 추격과 피격 상태에만 사용한다.
 
 ### Do
 
