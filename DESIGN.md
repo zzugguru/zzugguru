@@ -165,7 +165,7 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 - `welcome-message`는 플레이어에게 다음 행동을 안내하는 보조 문구다.
 - `rhythm-lane`은 네 입력 레인과 눌림 상태를, `rhythm-danger`는 실패 판정을, `health-meter`는 현재 실패 위험을 표시한다.
 - `contextual-tutorial`은 현재 빛·어둠 상태, 장애물 접근, 엄폐 가능 여부, 추격 상태에 맞는 한 가지 조작만 우선 안내한다. 일반 안내는 `feedback`, 즉시 생존 행동은 `danger`와 명시적 조작 문구를 함께 사용한다.
-- `dialogue-overlay`는 대사가 있는 컷씬(예: Chapter03 장치 작동 전 경고 장면)에서 배경 장면과 플레이어를 그대로 보여준 채 하단에 화자 이름과 대사를 표시한다. `feedback` 색 테두리로 강조하고, 마지막 대사 이후에는 짧은 페이드를 거쳐 다음 장면으로 전환한다.
+- `dialogue-overlay`는 대사가 있는 컷씬(예: Chapter03 장치 작동 전 경고 장면)에서 배경 장면과 플레이어를 그대로 보여준 채 하단에 화자 이름과 대사를 표시한다. Chapter02의 대화창과 동일한 형식(테두리 없는 둥근 사각형, 하단 24px 여백 고정 전체 폭, 화자는 흰색 bold, 대사는 흰색 일반체, 우측 하단에 진행 힌트)을 따르며, 마지막 대사 이후에는 짧은 페이드를 거쳐 다음 장면으로 전환한다.
 - `memory-vessel`은 Chapter03 기억 재구성 퍼즐의 세 가족 용기를 나타낸다. `feedback`은 연결 완료, `danger`는 불안정과 실패에만 사용하며 텍스트를 함께 표시한다.
 - `chapter-menu`는 기존 Chapter01과 새 Chapter03을 보존하면서 진입점을 제공한다. `game-choice-button`은 챕터와 가족 용기 선택에 사용하고 hover, focus, disabled 상태를 구분한다.
 - `map-control-button`은 Chapter03 연구 구역의 포인터·터치 이동과 장치 상호작용에 사용하며 키보드 조작과 동일한 기능을 제공한다.

@@ -5,6 +5,7 @@ import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, n
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
 import { advanceWarning, createWarning, WARNING_LINES, type WarningState } from '../shared/wardenWarningLogic';
+import { renderDialogueBox } from '../shared/dialogueBox';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 
@@ -405,13 +406,7 @@ export class MemoryReconstructionGame {
     ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
     this.drawPlayer();
 
-    const line = WARNING_LINES[this.warning.step];
-    ctx.fillStyle = 'rgba(17,24,39,.96)'; ctx.fillRect(80, 372, 800, 118);
-    ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.strokeRect(80, 372, 800, 118);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#818cf8'; ctx.font = '700 16px system-ui'; ctx.fillText(line.speaker, 106, 405);
-    ctx.fillStyle = '#f9fafb'; ctx.font = '700 20px system-ui'; ctx.fillText(line.text, 106, 438);
-    ctx.fillStyle = '#c7d2fe'; ctx.font = '13px system-ui'; ctx.textAlign = 'right'; ctx.fillText('다음 ▸', 854, 475);
+    renderDialogueBox(ctx, this.canvas, WARNING_LINES[this.warning.step], 'E · Enter ▶ 다음');
 
     if (this.warning.seen) {
       const alpha = Math.min(1, (performance.now() - this.warningFadeStartedAt) / 420);
