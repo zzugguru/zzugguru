@@ -6,8 +6,10 @@ import type { InputState } from './input';
 import type { Scene } from './Sequence';
 import { ALIEN_CHILDHOOD_ROOM, createLoadedImage } from './mapVisuals';
 import { drawPlayer, facingFromDirection, PLAYER_COLLISION_SIZE, type Facing } from './playerSprite';
+import { drawInteractionObject } from './interactionObjectSprite';
 
 const playerSpriteUrl = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
+const interactionObjectUrl = new URL('../assets/interaction-objects.png', import.meta.url).href;
 
 const TOY_SIZE = 16;
 const INTERACTION_RADIUS = 48;
@@ -26,6 +28,7 @@ export class ToyInteractionScene implements Scene {
   private facing: Facing = 'down';
   private readonly backgroundImage = createLoadedImage(ALIEN_CHILDHOOD_ROOM.backgroundUrl);
   private readonly playerImage = createLoadedImage(playerSpriteUrl);
+  private readonly objectImage = createLoadedImage(interactionObjectUrl);
 
   isComplete(): boolean {
     return this.readyToAdvance;
@@ -65,12 +68,25 @@ export class ToyInteractionScene implements Scene {
       context.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
     }
 
-    context.fillStyle = '#F9FAFB';
-    context.fillRect(
-      this.toyPosition.x - TOY_SIZE / 2,
-      this.toyPosition.y - TOY_SIZE / 2,
-      TOY_SIZE,
-      TOY_SIZE,
+    if (!drawInteractionObject(context, this.objectImage, {
+      asset: 'toy', position: this.toyPosition, width: 48, height: 42,
+    }, this.memoryTriggered)) {
+      context.fillStyle = '#F9FAFB';
+      context.fillRect(
+        this.toyPosition.x - TOY_SIZE / 2,
+        this.toyPosition.y - TOY_SIZE / 2,
+        TOY_SIZE,
+        TOY_SIZE,
+      );
+    }
+
+    context.font = '12px Inter, Pretendard, system-ui, sans-serif';
+    context.fillStyle = '#C7D2FE';
+    context.textAlign = 'center';
+    context.fillText(
+      this.memoryTriggered ? '어린 시절 장난감 · 완료' : '어린 시절 장난감',
+      this.toyPosition.x,
+      this.toyPosition.y + 37,
     );
 
     if (!drawPlayer(context, this.playerImage, this.playerPosition, this.facing)) {
@@ -114,6 +130,12 @@ export class ToyInteractionScene implements Scene {
     context.fillStyle = '#F9FAFB';
     context.textAlign = 'center';
 
+    context.font = '12px Inter, Pretendard, system-ui, sans-serif';
+    context.fillStyle = '#C7D2FE';
+    context.fillText('어린 시절 장난감 · 완료', canvas.width / 2, 190);
+
+    context.font = '20px Inter, Pretendard, system-ui, sans-serif';
+    context.fillStyle = '#F9FAFB';
     MEMORY_TEXT.forEach((line, index) => {
       context.fillText(line, canvas.width / 2, canvas.height / 2 - 30 + index * 32);
     });

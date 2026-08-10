@@ -3,10 +3,12 @@ import { canActivateDevice, canInteract, clearDirections, createFlow, movePlayer
 import { MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, type PlayableMapAssetEntry } from '../shared/mapAssetManifest';
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
-import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
+import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, ARCHIVE_ROOM_DOOR, ARCHIVE_SPAWN, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 import { selectEpilogueBackground } from './epilogueBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
+import { drawInteractionObject, type InteractionObjectAsset } from './interactionObjectSprite';
+import { drawFamilyNpcSprite, familyNpcAssetPath, familyNpcDestination } from './familyNpcSprite';
 
 type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -46,6 +48,13 @@ export class MemoryReconstructionGame {
   private readonly memoryRoomImage = new Image();
   private readonly playerImage = new Image();
   private readonly quartersImage = new Image();
+  private readonly archiveImage = new Image();
+  private readonly objectImage = new Image();
+  private readonly familyImages: Readonly<Record<FamilyId, HTMLImageElement>> = {
+    wife: new Image(),
+    son: new Image(),
+    daughter: new Image(),
+  };
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
@@ -57,6 +66,9 @@ export class MemoryReconstructionGame {
     this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room-v2.png', import.meta.url).href;
     this.playerImage.src = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
     this.quartersImage.src = new URL('../assets/yeongsu-quarters.png', import.meta.url).href;
+    this.archiveImage.src = new URL('../assets/chapter03-archive.png', import.meta.url).href;
+    this.objectImage.src = new URL('../assets/interaction-objects.png', import.meta.url).href;
+    for (const family of FAMILY) this.familyImages[family.id].src = familyNpcAssetPath(family.id);
   }
 
   mount(): void {
@@ -211,7 +223,7 @@ export class MemoryReconstructionGame {
   private readonly advanceEpilogue = (): void => {
     if (this.screen !== 'epilogue' || this.epilogue.phase === 'archive' || this.epilogue.phase === 'silence' || this.epilogue.phase === 'complete') return;
     this.epilogue = advanceEpilogue(this.epilogue);
-    if (this.epilogue.phase === 'archive') this.player = { x: 80, y: 260 };
+    if (this.epilogue.phase === 'archive') this.player = { ...ARCHIVE_SPAWN };
     if (this.epilogue.phase === 'complete') requestAnimationFrame(() => this.canvas.focus());
   };
 
@@ -224,7 +236,7 @@ export class MemoryReconstructionGame {
     const next = enterArchive(this.epilogue, this.player);
     if (next === this.epilogue) return;
     this.epilogue = next;
-    this.player = { x: 80, y: 260 };
+    this.player = { ...ARCHIVE_SPAWN };
   }
 
   private readonly loop = (time: number): void => {
@@ -284,7 +296,10 @@ export class MemoryReconstructionGame {
     }
     if (map.device) {
       const device = map.device.bounds;
-      ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height);
+      const drawn = drawInteractionObject(ctx, this.objectImage, 'reconstruction-device', {
+        x: device.x + device.width / 2, y: device.y + device.height / 2,
+      }, { width: 150, height: 150 }, this.flow.deviceComplete);
+      if (!drawn) { ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height); }
     }
     if (collectionAvailable(this.flow)) this.drawMemoryArea();
     ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
@@ -297,20 +312,29 @@ export class MemoryReconstructionGame {
 
   private drawMemoryArea(): void {
     const ctx = this.context;
-    const familyNpcs = [
-      { name: '아내', ...MEMORY_ROOM_MAP.familyMarkers!.wife },
-      { name: '큰아들', ...MEMORY_ROOM_MAP.familyMarkers!.son },
-      { name: '작은딸', ...MEMORY_ROOM_MAP.familyMarkers!.daughter },
+    const familyNpcs: readonly { id: FamilyId; name: string; x: number; y: number }[] = [
+      { id: 'wife', name: '아내', ...MEMORY_ROOM_MAP.familyMarkers!.wife },
+      { id: 'son', name: '큰아들', ...MEMORY_ROOM_MAP.familyMarkers!.son },
+      { id: 'daughter', name: '작은딸', ...MEMORY_ROOM_MAP.familyMarkers!.daughter },
     ];
     for (const npc of familyNpcs) {
-      ctx.fillStyle = '#818cf8'; ctx.fillRect(npc.x, npc.y, 24, 30);
-      ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(npc.name, npc.x + 12, npc.y - 7);
+      const anchor = { centerX: npc.x + 12, feetY: npc.y + 30 };
+      if (!drawFamilyNpcSprite(ctx, this.familyImages[npc.id], anchor)) {
+        ctx.fillStyle = '#818cf8'; ctx.fillRect(npc.x, npc.y, 24, 30);
+      }
+      const destination = familyNpcDestination(anchor);
+      ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(npc.name, anchor.centerX, destination.y - 7);
     }
     for (const item of MEMORY_OBJECTS) {
       if (this.collection.collected.includes(item.id)) continue;
-      ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(item.markerX, item.markerY, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#818cf8'; ctx.strokeRect(item.markerX - 14, item.markerY - 14, 28, 28);
-      ctx.fillStyle = '#f9fafb'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(item.name, item.markerX, item.markerY - 21);
+      const drawn = drawInteractionObject(ctx, this.objectImage, item.id as InteractionObjectAsset,
+        { x: item.markerX, y: item.markerY }, { width: 52, height: 52 });
+      if (!drawn) {
+        ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(item.markerX, item.markerY, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#818cf8'; ctx.strokeRect(item.markerX - 14, item.markerY - 14, 28, 28);
+      }
+      ctx.fillStyle = '#f9fafb'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(item.name, item.markerX, item.markerY - 29);
     }
     ctx.fillStyle = '#111827'; ctx.fillRect(56, 86, 260, 56);
     ctx.fillStyle = '#f9fafb'; ctx.font = '700 16px system-ui'; ctx.textAlign = 'left';
@@ -394,16 +418,16 @@ export class MemoryReconstructionGame {
   private drawEpilogue(): void {
     const ctx = this.context; const phase = this.epilogue.phase;
     ctx.fillStyle = '#111827'; ctx.fillRect(26, 22, 908, 496); ctx.textAlign = 'center';
-    const quartersBackground = selectEpilogueBackground(phase, this.quartersImage);
-    const quartersReady = quartersBackground !== null && drawMemoryRoomBackground(ctx, quartersBackground);
+    const epilogueBackground = selectEpilogueBackground(phase, this.quartersImage, this.archiveImage);
+    const epilogueBackgroundReady = epilogueBackground !== null && drawMemoryRoomBackground(ctx, epilogueBackground);
     if (phase === 'silence') {
-      if (!quartersReady) { ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); }
+      if (!epilogueBackgroundReady) { ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); }
       ctx.fillStyle = 'rgba(3,7,18,.82)'; ctx.fillRect(170, 445, 620, 48);
       ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui';
       ctx.fillText('영수의 작은 방 · 우주선의 낮은 진동만 들린다.', 480, 475); return;
     }
     if (phase === 'corridor') {
-      if (!quartersReady) {
+      if (!epilogueBackgroundReady) {
         ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); ctx.strokeStyle = '#374151';
         for (let x = 48; x < 912; x += 48) ctx.strokeRect(x, 90, 48, 400);
         ctx.fillStyle = '#312e81'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
@@ -411,17 +435,28 @@ export class MemoryReconstructionGame {
         ctx.fillStyle = 'rgba(49,46,129,.2)'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
         ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.strokeRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
       }
-      ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.fillText('기록 보관소', ARCHIVE_DOOR.x, ARCHIVE_DOOR.y + 5);
+      drawInteractionObject(ctx, this.objectImage, 'archive-door', ARCHIVE_DOOR, { width: 62, height: 76 });
+      ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.fillText('기록 보관소', ARCHIVE_DOOR.x, ARCHIVE_DOOR.y + 52);
       this.drawPlayer();
       ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui'; ctx.fillText(this.epilogue.message, 480, 55); return;
     }
     if (phase === 'archive' || phase === 'archive-complete') {
       ctx.fillStyle = '#c7d2fe'; ctx.font = '700 15px system-ui'; ctx.fillText('기록 보관소', 480, 48);
       ctx.textAlign = 'left'; ctx.fillStyle = '#fb7185'; ctx.fillText('생체 재구성: 비활성', 54, 76); ctx.fillStyle = '#818cf8'; ctx.fillText('기억 보존: 활성', 240, 76);
+      const doorDrawn = drawInteractionObject(ctx, this.objectImage, 'archive-door', ARCHIVE_ROOM_DOOR, { width: 62, height: 76 });
+      if (!doorDrawn) {
+        ctx.fillStyle = '#1f2937'; ctx.fillRect(ARCHIVE_ROOM_DOOR.x - 31, ARCHIVE_ROOM_DOOR.y - 38, 62, 76);
+        ctx.strokeStyle = '#818cf8'; ctx.strokeRect(ARCHIVE_ROOM_DOOR.x - 31, ARCHIVE_ROOM_DOOR.y - 38, 62, 76);
+      }
       for (const record of ARCHIVE_RECORDS) {
-        const placed = this.epilogue.placed.includes(record.id); ctx.fillStyle = placed ? '#312e81' : '#1f2937'; ctx.fillRect(record.x - 32, record.y - 24, 64, 48);
-        ctx.strokeStyle = placed ? '#f9fafb' : '#818cf8'; ctx.strokeRect(record.x - 32, record.y - 24, 64, 48);
-        ctx.fillStyle = '#c7d2fe'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(placed ? '보존 완료' : record.name, record.x, record.y + 4);
+        const placed = this.epilogue.placed.includes(record.id);
+        const asset = `archive-${record.id}` as InteractionObjectAsset;
+        const drawn = drawInteractionObject(ctx, this.objectImage, asset, record, { width: 58, height: 64 }, placed);
+        if (!drawn) {
+          ctx.fillStyle = placed ? '#312e81' : '#1f2937'; ctx.fillRect(record.x - 32, record.y - 24, 64, 48);
+          ctx.strokeStyle = placed ? '#f9fafb' : '#818cf8'; ctx.strokeRect(record.x - 32, record.y - 24, 64, 48);
+        }
+        ctx.fillStyle = '#c7d2fe'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(placed ? '보존 완료' : record.name, record.x, record.y + 42);
       }
       this.drawPlayer();
       ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.fillText(`기록 배치 ${this.epilogue.placed.length} / ${ARCHIVE_RECORDS.length}`, 480, 470);

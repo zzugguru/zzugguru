@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isWithinRange } from './proximity';
-import { isPositionAllowed, MAP_PLAYER_VISIBLE_EXTENTS, moveMapPlayer } from './mapMovement';
+import { isPositionAllowed, MAP_PLAYER_COLLISION_HALF, moveMapPlayer } from './mapMovement';
 import {
   ALIEN_CHILDHOOD_ROOM,
   EARTH_OBSERVATION_ROOM,
@@ -13,7 +13,16 @@ const stopped = { up: false, down: false, left: false, right: false };
 describe('Chapter 2 RPG map movement', () => {
   it('uses centered ninety-percent collision rectangles in every room', () => {
     const rooms = [
-      [SECURITY_OFFICE, [{ x: 248, y: 78, width: 456, height: 178 }, { x: 88, y: 310, width: 168, height: 118 }, { x: 688, y: 340, width: 172, height: 130 }]],
+      [SECURITY_OFFICE, [
+        { x: 158, y: 115, width: 72, height: 145 },
+        { x: 243, y: 102, width: 72, height: 124 },
+        { x: 333, y: 69, width: 281, height: 188 },
+        { x: 618, y: 171, width: 48, height: 62 },
+        { x: 665, y: 55, width: 88, height: 179 },
+        { x: 755, y: 108, width: 52, height: 97 },
+        { x: 124, y: 334, width: 141, height: 136 },
+        { x: 650, y: 381, width: 139, height: 99 },
+      ]],
       [ALIEN_CHILDHOOD_ROOM, [{ x: 88, y: 145, width: 156, height: 176 }, { x: 714, y: 326, width: 130, height: 98 }]],
       [HOLOGRAM_ARCHIVE, [{ x: 170, y: 100, width: 162, height: 156 }, { x: 399, y: 100, width: 162, height: 156 }, { x: 628, y: 100, width: 162, height: 156 }]],
       [EARTH_OBSERVATION_ROOM, [{ x: 714, y: 205, width: 86, height: 150 }, { x: 132, y: 130, width: 86, height: 116 }]],
@@ -31,30 +40,40 @@ describe('Chapter 2 RPG map movement', () => {
     }
   });
 
-  it('keeps the full four-direction alpha silhouette inside the visible room floor', () => {
+  it('keeps the 24px foot collision box inside the room floor', () => {
     const floor = EARTH_OBSERVATION_ROOM.floor;
     const topLeft = {
-      x: floor.x + MAP_PLAYER_VISIBLE_EXTENTS.left,
-      y: floor.y + MAP_PLAYER_VISIBLE_EXTENTS.top,
+      x: floor.x + MAP_PLAYER_COLLISION_HALF,
+      y: floor.y + MAP_PLAYER_COLLISION_HALF,
     };
     expect(isPositionAllowed(topLeft, floor, [])).toBe(true);
     expect(moveMapPlayer(topLeft, { ...stopped, up: true, left: true }, 1, floor, [])).toEqual(topLeft);
 
     const bottomRight = {
-      x: floor.x + floor.width - MAP_PLAYER_VISIBLE_EXTENTS.right,
-      y: floor.y + floor.height - MAP_PLAYER_VISIBLE_EXTENTS.bottom,
+      x: floor.x + floor.width - MAP_PLAYER_COLLISION_HALF,
+      y: floor.y + floor.height - MAP_PLAYER_COLLISION_HALF,
     };
     expect(isPositionAllowed(bottomRight, floor, [])).toBe(true);
     expect(moveMapPlayer(bottomRight, { ...stopped, down: true, right: true }, 1, floor, [])).toEqual(bottomRight);
   });
 
-  it('blocks the full visible silhouette from furniture while preserving axis sliding', () => {
+  it('blocks the foot collision box from furniture while preserving axis sliding', () => {
     const floor = { x: 0, y: 0, width: 500, height: 500 };
     const collision = [{ x: 220, y: 180, width: 80, height: 80 }];
-    const position = { x: 200, y: 300 };
+    const position = { x: 200, y: 260 };
     const moved = moveMapPlayer(position, { ...stopped, up: true, right: true }, 0.5, floor, collision);
     expect(moved.x).toBe(position.x);
     expect(moved.y).toBeLessThan(position.y);
+  });
+
+  it('allows the security-office player feet up to the top floor edge', () => {
+    const topY = SECURITY_OFFICE.floor.y + MAP_PLAYER_COLLISION_HALF;
+    const position = { x: 480, y: topY };
+
+    expect(topY).toBe(268);
+    expect(isPositionAllowed(position, SECURITY_OFFICE.floor, SECURITY_OFFICE.collisions)).toBe(true);
+    expect(isPositionAllowed({ ...position, y: topY - 0.01 }, SECURITY_OFFICE.floor, SECURITY_OFFICE.collisions)).toBe(false);
+    expect(moveMapPlayer(position, { ...stopped, up: true }, 1, SECURITY_OFFICE.floor, SECURITY_OFFICE.collisions)).toEqual(position);
   });
 
   it('rejects wall zones that a broad rectangular room approximation would admit', () => {
@@ -68,7 +87,7 @@ describe('Chapter 2 RPG map movement', () => {
       { map: SECURITY_OFFICE, path: [{ x: 480, y: 400 }, { x: 480, y: 312 }], target: { x: 480, y: 270 }, radius: 56 },
       { map: SECURITY_OFFICE, path: [{ x: 480, y: 320 }], target: { x: 480, y: 260 }, radius: 80 },
       { map: SECURITY_OFFICE, path: [{ x: 480, y: 400 }, { x: 480, y: 312 }], target: { x: 480, y: 270 }, radius: 48 },
-      { map: SECURITY_OFFICE, path: [{ x: 480, y: 400 }, { x: 300, y: 440 }, { x: 274, y: 350 }], target: { x: 270, y: 350 }, radius: 40 },
+      { map: SECURITY_OFFICE, path: [{ x: 480, y: 400 }, { x: 300, y: 440 }, { x: 276, y: 350 }], target: { x: 270, y: 350 }, radius: 40 },
       { map: ALIEN_CHILDHOOD_ROOM, path: [{ x: 400, y: 300 }, { x: 640, y: 216 }], target: { x: 640, y: 200 }, radius: 48 },
       { map: HOLOGRAM_ARCHIVE, path: [{ x: 480, y: 340 }, { x: 240, y: 312 }], target: { x: 240, y: 275 }, radius: 48 },
       { map: HOLOGRAM_ARCHIVE, path: [{ x: 480, y: 340 }, { x: 480, y: 312 }], target: { x: 480, y: 275 }, radius: 48 },
