@@ -5,11 +5,12 @@ import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, n
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
 import { advanceWarning, createWarning, WARNING_LINES, type WarningState } from '../shared/wardenWarningLogic';
+import { advanceBlackout, BLACKOUT_LINES, createBlackout, type BlackoutState } from '../shared/blackoutLogic';
 import { renderDialogueBox } from '../shared/dialogueBox';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 
-type Screen = 'map' | 'warning' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
+type Screen = 'map' | 'warning' | 'blackout' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
 type Controls = {
   map: HTMLElement;
@@ -41,6 +42,8 @@ export class MemoryReconstructionGame {
   private epilogue: EpilogueState = createEpilogue();
   private warning: WarningState = createWarning();
   private warningFadeStartedAt = 0;
+  private blackout: BlackoutState = createBlackout();
+  private blackoutFadeStartedAt = 0;
   private silenceUntil = 0;
   private awakeningStartedAt = 0;
   private previousTime = performance.now();
@@ -82,7 +85,7 @@ export class MemoryReconstructionGame {
       if (this.screen === 'letting-go') this.chooseLettingGo(button.dataset.choice as LettingGoChoice);
     }));
     this.controls.epilogueNext.addEventListener('click', () => {
-      if (this.screen === 'warning') this.interact();
+      if (this.screen === 'warning' || this.screen === 'blackout') this.interact();
       else this.advanceEpilogue();
     });
     this.controls.choiceButtons.forEach((button, index) => button.addEventListener('click', () => {
@@ -102,6 +105,9 @@ export class MemoryReconstructionGame {
       event.preventDefault(); this.interact(); return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'warning') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'blackout') {
       event.preventDefault(); this.interact(); return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'epilogue') {
@@ -151,13 +157,21 @@ export class MemoryReconstructionGame {
       if (!wasSeen && this.warning.seen) this.warningFadeStartedAt = performance.now();
       return;
     }
+    if (this.screen === 'blackout') {
+      const wasSeen = this.blackout.seen;
+      this.blackout = advanceBlackout(this.blackout);
+      if (!wasSeen && this.blackout.seen) this.blackoutFadeStartedAt = performance.now();
+      return;
+    }
     if (this.screen === 'map' && collectionAvailable(this.flow)) {
       const next = collectNearby(this.collection, this.player);
       this.collection = next;
       if (next.completed) {
-        this.lettingGo = createLettingGo();
-        this.screen = 'letting-go';
-        requestAnimationFrame(() => this.controls.lettingButtons[0].focus());
+        // 비트2: letting-go로 곧장 보내는 대신 정전·변모 컷씬(blackout)을 먼저 거친다.
+        this.blackout = createBlackout();
+        this.screen = 'blackout';
+        this.clearMovement();
+        requestAnimationFrame(() => this.controls.epilogueNext.focus());
       }
       return;
     }
@@ -197,6 +211,7 @@ export class MemoryReconstructionGame {
       this.advanceEpilogue(); return;
     }
     if (this.screen === 'warning') { this.interact(); return; }
+    if (this.screen === 'blackout') { this.interact(); return; }
     if (this.screen !== 'playing') return;
     const bounds = this.canvas.getBoundingClientRect();
     const family = familyAtPoint(
@@ -261,6 +276,11 @@ export class MemoryReconstructionGame {
       this.screen = 'map';
       this.interact();
     }
+    if (this.screen === 'blackout' && this.blackout.seen && time - this.blackoutFadeStartedAt >= 420) {
+      this.lettingGo = createLettingGo();
+      this.screen = 'letting-go';
+      requestAnimationFrame(() => this.controls.lettingButtons[0].focus());
+    }
     if (this.screen === 'awakening' && time - this.awakeningStartedAt >= 3_600) {
       this.flow = transitionFlow(this.flow, { type: 'puzzle-success' });
       this.screen = 'result';
@@ -284,6 +304,7 @@ export class MemoryReconstructionGame {
     this.context.fillStyle = '#030712'; this.context.fillRect(0, 0, 960, 540);
     if (this.screen === 'map') this.drawMap();
     else if (this.screen === 'warning') this.drawWarning();
+    else if (this.screen === 'blackout') this.drawBlackout();
     else if (this.screen === 'playing') this.drawPuzzle();
     else if (this.screen === 'awakening') this.drawAwakening();
     else if (this.screen === 'letting-go') this.drawLettingGo();
@@ -414,6 +435,26 @@ export class MemoryReconstructionGame {
     }
   }
 
+  private drawBlackout(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = selectChapter03Background(true, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    this.drawPlayer();
+
+    const dimAlpha = 0.15 + Math.min(this.blackout.step, BLACKOUT_LINES.length - 1) * 0.12;
+    ctx.fillStyle = `rgba(3,7,18,${dimAlpha})`; ctx.fillRect(0, 0, 960, 540);
+
+    renderDialogueBox(ctx, this.canvas, BLACKOUT_LINES[this.blackout.step], 'E · Enter ▶ 다음');
+
+    if (this.blackout.seen) {
+      const alpha = Math.min(1, (performance.now() - this.blackoutFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+  }
+
   private drawLettingGo(): void {
     const ctx = this.context;
     ctx.fillStyle = '#111827'; ctx.fillRect(26, 22, 908, 496);
@@ -498,7 +539,9 @@ export class MemoryReconstructionGame {
     this.controls.retryButton.hidden = this.screen !== 'result' || this.state.status !== 'failure';
     this.controls.lettingChoices.hidden = this.screen !== 'letting-go' || this.lettingGo.completed;
     const epilogueCanAdvance = this.screen === 'epilogue' && !['silence', 'corridor', 'archive', 'complete'].includes(this.epilogue.phase);
-    this.controls.epilogueNext.hidden = !epilogueCanAdvance && !(this.screen === 'warning' && !this.warning.seen);
+    const warningCanAdvance = this.screen === 'warning' && !this.warning.seen;
+    const blackoutCanAdvance = this.screen === 'blackout' && !this.blackout.seen;
+    this.controls.epilogueNext.hidden = !epilogueCanAdvance && !warningCanAdvance && !blackoutCanAdvance;
     const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap());
     const nearObject = this.screen === 'map' && collectionAvailable(this.flow) && nearbyMemoryObject(this.player, this.collection) !== null;
     const nearRecord = this.screen === 'epilogue' && nearbyArchiveRecord(this.player, this.epilogue) !== null;
@@ -511,6 +554,10 @@ export class MemoryReconstructionGame {
     if (this.screen === 'warning') {
       const line = WARNING_LINES[this.warning.step];
       message = `${line.speaker}: ${line.text}` + (this.warning.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
+    if (this.screen === 'blackout') {
+      const line = BLACKOUT_LINES[this.blackout.step];
+      message = (line.speaker ? `${line.speaker}: ${line.text}` : line.text) + (this.blackout.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
     }
     if (this.screen === 'map' && nearDevice) message = '기억 재구성 장치 앞입니다. E 또는 Enter로 작동하세요.';
     if (this.screen === 'map' && this.flow.deviceComplete) message = this.collection.completed
