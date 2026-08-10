@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CCTV_CHANNEL_ASSET_PATHS, clampCctvChannel, CctvConsoleScene, drawCctvMemoryImage } from './cctvConsoleScene';
+import { CCTV_CHANNEL_ASSET_PATHS, clampCctvChannel, CctvConsoleScene, drawCctvFootage, selectCctvFootage } from './cctvConsoleScene';
 import type { InputState } from './input';
 
 const bounds = { width: 960, height: 540 };
@@ -34,30 +34,48 @@ function createContext(): CanvasRenderingContext2D {
 const canvas = { width: 960, height: 540 } as HTMLCanvasElement;
 
 describe('CctvConsoleScene', () => {
-  it('maps the three memory images to parking, lobby and guard-door channels', () => {
+  it('maps merged normal and ghost footage pairs to all three channels', () => {
     expect(CCTV_CHANNEL_ASSET_PATHS).toEqual([
-      expect.stringContaining('cctv-parking-memory.png'),
-      expect.stringContaining('cctv-lobby-memory.png'),
-      expect.stringContaining('cctv-guard-door-memory.png'),
+      {
+        normal: expect.stringContaining('under_parking_normal.png'),
+        ghost: expect.stringContaining('under_parking_ghost.png'),
+      },
+      {
+        normal: expect.stringContaining('front_robby_normal.png'),
+        ghost: expect.stringContaining('front_robby_ghost.png'),
+      },
+      {
+        normal: expect.stringContaining('front_security_normal.png'),
+        ghost: expect.stringContaining('front_security_ghost.png'),
+      },
     ]);
   });
 
-  it('draws an exact-size loaded memory image at native screen geometry', () => {
+  it('selects ghost footage only for the current round target', () => {
+    expect(selectCctvFootage(0, 0)).toBe('ghost');
+    expect(selectCctvFootage(1, 0)).toBe('normal');
+    expect(selectCctvFootage(1, 1)).toBe('ghost');
+    expect(selectCctvFootage(2, 1)).toBe('normal');
+    expect(selectCctvFootage(2, 2)).toBe('ghost');
+    expect(selectCctvFootage(2, 3)).toBe('normal');
+  });
+
+  it('fits loaded merged footage into the CCTV screen', () => {
     const context = createContext();
-    const image = { complete: true, naturalWidth: 600, naturalHeight: 340 } as HTMLImageElement;
-    expect(drawCctvMemoryImage(context, image)).toBe(true);
-    expect(context.imageSmoothingEnabled).toBe(false);
+    const image = { complete: true, naturalWidth: 800, naturalHeight: 436 } as HTMLImageElement;
+    expect(drawCctvFootage(context, image)).toBe(true);
+    expect(context.imageSmoothingEnabled).toBe(true);
     expect(context.drawImage).toHaveBeenCalledWith(image, 180, 80, 600, 340);
   });
 
   it.each([
     null,
-    { complete: false, naturalWidth: 600, naturalHeight: 340 },
-    { complete: true, naturalWidth: 599, naturalHeight: 340 },
-    { complete: true, naturalWidth: 600, naturalHeight: 339 },
+    { complete: false, naturalWidth: 800, naturalHeight: 436 },
+    { complete: true, naturalWidth: 0, naturalHeight: 436 },
+    { complete: true, naturalWidth: 800, naturalHeight: 0 },
   ])('keeps the fallback screen when the channel image is unavailable or malformed: %o', (image) => {
     const context = createContext();
-    expect(drawCctvMemoryImage(context, image as HTMLImageElement | null)).toBe(false);
+    expect(drawCctvFootage(context, image as HTMLImageElement | null)).toBe(false);
     expect(context.drawImage).not.toHaveBeenCalled();
   });
 

@@ -95,10 +95,10 @@ export const CHAPTER01_TOPVIEW_SPRITE = {
   frameWidth: 64,
   frameHeight: 80,
   alphaBounds: [
-    { left: 14, top: 8, right: 50, bottom: 76 },
-    { left: 18, top: 8, right: 46, bottom: 76 },
-    { left: 18, top: 8, right: 46, bottom: 76 },
-    { left: 14, top: 8, right: 50, bottom: 76 },
+    { left: 16, top: 8, right: 48, bottom: 76 },
+    { left: 21, top: 8, right: 42, bottom: 76 },
+    { left: 21, top: 8, right: 42, bottom: 76 },
+    { left: 16, top: 8, right: 48, bottom: 76 },
   ],
 } as const;
 
@@ -144,6 +144,27 @@ export function getContainedRasterGeometry(
   verticalAlignment = 0.5,
 ): RasterDrawGeometry {
   const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+
+  return {
+    x: (targetWidth - width) * horizontalAlignment,
+    y: (targetHeight - height) * verticalAlignment,
+    width,
+    height,
+    scale,
+  };
+}
+
+export function getCoverRasterGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  horizontalAlignment = 0.5,
+  verticalAlignment = 0.5,
+): RasterDrawGeometry {
+  const scale = Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight);
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
 

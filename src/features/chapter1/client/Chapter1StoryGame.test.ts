@@ -111,12 +111,12 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Chapter1StoryGame', () => {
-  it('renders the square Yeongsu title source at a contained 1:1 size', () => {
+  it('fills screen 01 with the square Yeongsu artwork at a covered 1:1 size', () => {
     const setupResult = setup();
     setupResult.game.mount();
     setupResult.renderFrame();
 
-    expect(setupResult.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 540, 540);
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, -105, 960, 960);
     expect((setupResult.context as unknown as { imageSmoothingEnabled: boolean }).imageSmoothingEnabled).toBe(true);
   });
 
@@ -195,7 +195,7 @@ describe('Chapter1StoryGame', () => {
     expect(controls.inputFeedback?.kind).toBe('move');
     expect(setupResult.context.rect).toHaveBeenCalledWith(136, 104, 764, 260);
     expect(setupResult.context.clip).toHaveBeenCalled();
-    expect(exploration.target).toEqual({ x: 480, y: 204 });
+    expect(exploration.target).toEqual({ x: 480, y: 316 });
   });
 
   it.each([
@@ -222,6 +222,36 @@ describe('Chapter1StoryGame', () => {
 
     expect(setupResult.liveRegion.textContent).toContain('목표에 도착했습니다');
     expect(setupResult.liveRegion.textContent).toContain('Z, Enter 또는 클릭');
+  });
+
+  it('41·42번 지지직 효과는 캐릭터를 고정하고 대사 패널보다 먼저 상단에만 그린다', () => {
+    const setupResult = setup();
+    const controls = setupResult.game as unknown as StoryGameControls;
+    setupResult.game.mount();
+    controls.currentIndex = 40;
+
+    setupResult.renderFrame(0);
+    const firstSpriteCall = setupResult.context.drawImage.mock.calls.find(
+      ([image]) => (image as { naturalWidth?: number }).naturalWidth === 256,
+    );
+    const interferenceCalls = setupResult.context.fillRect.mock.calls.filter(
+      ([, , , height]) => Number(height) <= 11,
+    );
+    const panelCallOrder = setupResult.context.roundRect.mock.invocationCallOrder.at(-1)!;
+
+    expect(firstSpriteCall?.slice(5, 7)).toEqual([448, 136]);
+    expect(interferenceCalls.length).toBeGreaterThan(0);
+    for (const [, y, , height] of interferenceCalls) {
+      expect(Number(y) + Number(height)).toBeLessThanOrEqual(372);
+    }
+    expect(setupResult.context.fillRect.mock.invocationCallOrder.at(-1)).toBeLessThan(panelCallOrder);
+
+    setupResult.context.drawImage.mockClear();
+    setupResult.renderFrame(100);
+    const laterSpriteCall = setupResult.context.drawImage.mock.calls.find(
+      ([image]) => (image as { naturalWidth?: number }).naturalWidth === 256,
+    );
+    expect(laterSpriteCall?.slice(5, 7)).toEqual(firstSpriteCall?.slice(5, 7));
   });
 
   it.each([
