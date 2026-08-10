@@ -12,8 +12,11 @@
 2. 기억 연결 퍼즐 (`shared/gameLogic.ts`)
 3. 생체 용기 각성 연출 (`awakeningStage`, `gameLogic.ts`)
 4. 기억의 방에서 추억 물건 수집 + "기억의 빈틈" 대사 (`shared/collectionLogic.ts`)
-5. Letting-go 퀴즈: 붙잡기/기록/놓아주기 선택 (`shared/lettingGoLogic.ts`)
-6. 에필로그: 복도 → 기록보관소 → 몽타주 → 고향별 → 일지 → 크레딧 → 포스트크레딧 (`shared/epilogueLogic.ts`)
+5. 장치 작동 전 누나의 경고 컷씬 (`shared/wardenWarningLogic.ts`)
+6. 우주선 정전 · 기억세계 변모 연출 (`shared/blackoutLogic.ts`)
+7. 외계 가족 구출 서브시퀀스: 아버지·어머니·누나 (`shared/rescueLogic.ts`)
+8. Letting-go 퀴즈: 붙잡기/기록/놓아주기 선택 (`shared/lettingGoLogic.ts`)
+9. 에필로그: 복도 → 기록보관소 → 몽타주 → 고향별 → 일지 → 크레딧 → 포스트크레딧 (`shared/epilogueLogic.ts`)
 
 ## 스토리 갭 백로그 (원작 `Story/Chapter03.md` 대비 미구현)
 
@@ -44,7 +47,7 @@
 
 - [x] 2a. 수집 완료 시점에 정전 트리거 (조명이 꺼지는 짧은 연출) — 대치 대화 3줄 포함
 - [x] 2b. 배경 전환 — 새 이미지 에셋 대신 진행 단계에 비례해 짙어지는 색 오버레이로 대체(결정 완료)
-- [x] 2c. 변모 연출에서 letting-go로 연결하는 상태 연결 — 비트 3이 아직 없어 우선 letting-go로 직접 연결. 비트 3 구현 시 이 연결 지점 하나만 바꾸면 됨.
+- [x] 2c. 변모 연출에서 구출 단계(map 화면)로 연결하는 상태 연결 — 비트 3 구현으로 letting-go 직결에서 재변경됨.
 
 완료: 2026-08-10. 상세는 `chapter3-development-log.md`와 `CHAPTER3_BRIEF.md`의 `Completed Work Log` 참고.
 
@@ -52,11 +55,13 @@
 
 서사상 위치: 비트 2 직후, 비트 4 이전. 아버지·어머니·누나 3명이 각자의 트라우마 기억에 갇혀 있으며 구조 패턴이 유사하다 — 공용 프레임을 먼저 만들고 인물별로 채우는 순서를 권장한다.
 
-- [ ] 3a. 구출 서브시퀀스 공용 프레임(진행 상태, 3명 중 몇 명 구출했는지 HUD)
-- [ ] 3b. 외계 아버지 구출 — 사고 당시 어린 이온을 잃은 순간이 반복 재생되는 기억 루프
-- [ ] 3c. 외계 어머니 구출 — 탈출 장치를 향해 손을 뻗으며 우는 장면
-- [ ] 3d. 외계 누나 구출 — 동생을 찾아 끝없는 복도를 달리는 장면
-- [ ] 3e. 3명 모두 구출 완료 시 비트 4(식탁 인식)로 넘어가는 상태 연결
+- [x] 3a. 구출 서브시퀀스 공용 프레임(진행 상태, 3명 중 몇 명 구출했는지 HUD) — `drawRescueTargets()`
+- [x] 3b. 외계 아버지 구출 — 사고 당시 어린 이온을 잃은 순간이 반복 재생되는 기억 루프
+- [x] 3c. 외계 어머니 구출 — 탈출 장치를 향해 손을 뻗으며 우는 장면
+- [x] 3d. 외계 누나 구출 — 동생을 찾아 끝없는 복도를 달리는 장면
+- [x] 3e. 3명 모두 구출 완료 시 letting-go로 넘어가는 상태 연결 — 비트 4가 아직 없어 우선 letting-go로 직접 연결. 비트 4 구현 시 이 연결 지점 하나만 바꾸면 됨.
+
+완료: 2026-08-10. 필수 진행 조건 · 맵 탐색형으로 확정(Developer Decisions 참고). 상세는 `chapter3-development-log.md`와 `CHAPTER3_BRIEF.md`의 `Completed Work Log` 참고.
 
 ### 4. 마지막 저녁식탁 환상 인식 장면 (원작 237~333줄)
 
@@ -70,7 +75,7 @@
 ## Chapter3 전용 add-only 지침
 
 - 루트 `CLAUDE.md`의 add-only 원칙을 그대로 따른다: 새 로직·화면·테스트는 새 파일로, 기존 파일에는 최소 연결 훅만.
-- 새 시퀀스에 필요한 상태는 기존 `FlowState`나 `EpiloguePhase`를 고쳐 쓰지 말고, 별도 상태 타입을 새 파일(예: `shared/wardenWarningLogic.ts`, `shared/blackoutLogic.ts`, `shared/dinnerIllusionLogic.ts` 같은 이름 후보)로 만든다. `MemoryReconstructionGame.ts`에는 새 `Screen` 값 한 개와 그에 대응하는 분기만 추가하는 방식을 우선 검토한다.
+- 새 시퀀스에 필요한 상태는 기존 `FlowState`나 `EpiloguePhase`를 고쳐 쓰지 말고, 별도 상태 타입을 새 파일(구현된 예: `shared/wardenWarningLogic.ts`, `shared/blackoutLogic.ts`, `shared/rescueLogic.ts`, 다음 후보 `shared/dinnerIllusionLogic.ts`)로 만든다. `MemoryReconstructionGame.ts`에는 새 `Screen` 값 한 개와 그에 대응하는 분기만 추가하는 방식을 우선 검토한다. 다만 비트2·3처럼 "화면 전환의 목적지를 바꿔야 하는" 지점은 순수 추가만으로 불가능할 수 있다 — 그 경우 기존 조건문에 가드를 추가하는 최소 수정을 add-only 예외로 명시하고 리뷰에서 반드시 확인받는다(비트2·3에서 실제로 이런 예외가 각각 발생했다).
 - 새 배경·스프라이트 에셋은 `src/features/chapter3/assets/`에 추가한다. 기존 `chapter03-*.png` 파일은 교체하지 않는다.
 - 새 대사·카피는 원작 `Story/Chapter03.md`의 어휘와 말투(인물별 존댓말/반말 패턴)를 유지한다.
 - `DESIGN.md`에 없는 새 컴포넌트 토큰(예: 정전 연출 색상, 구출 서브시퀀스 UI, 식탁 환상 장면 배색)이 필요하면 구현 전에 `DESIGN.md`를 먼저 갱신하고 `npm run design:lint`를 통과시킨다.
