@@ -1,4 +1,5 @@
 import type { Point, Rect } from './mapLogic';
+import { scaleRectFromCenter } from '../../../shared/geometry';
 
 export type MapAssetStatus = 'unmapped' | 'mapped' | 'verified' | 'needs-remap';
 export type MemoryObjectId = 'photo' | 'market' | 'tool' | 'lens' | 'bowl';
@@ -13,27 +14,29 @@ export type PlayableMapAssetEntry = AssetBase & {
 };
 export type MapAssetEntry = UnprocessedMapAssetEntry | PlayableMapAssetEntry;
 
+const SPACESHIP_DEVICE_BOUNDS = scaleRectFromCenter({ x: 630, y: 178, width: 185, height: 184 });
+
 export const SPACESHIP_MAP: PlayableMapAssetEntry = {
   id: 'chapter03-spaceship-lab', file: 'chapter03-spaceship-lab.png', version: '2026-08-09.2', status: 'verified',
-  canvas: { width: 960, height: 540 }, bounds: { x: 40, y: 22, width: 876, height: 482 }, spawn: { x: 78, y: 258 },
+  canvas: { width: 960, height: 540 }, bounds: { x: 65, y: 52, width: 830, height: 432 }, spawn: { x: 78, y: 258 },
   collisions: [
     { x: 170, y: 91, width: 220, height: 76 }, { x: 170, y: 365, width: 220, height: 68 },
     { x: 443, y: 72, width: 54, height: 116 }, { x: 445, y: 318, width: 54, height: 110 },
-    { x: 630, y: 178, width: 185, height: 184 }, { x: 608, y: 392, width: 240, height: 55 },
-  ],
-  device: { bounds: { x: 630, y: 178, width: 185, height: 184 }, interactionMargin: 46 },
+    SPACESHIP_DEVICE_BOUNDS, { x: 608, y: 392, width: 240, height: 55 },
+  ].map((rect) => rect === SPACESHIP_DEVICE_BOUNDS ? rect : scaleRectFromCenter(rect)),
+  device: { bounds: SPACESHIP_DEVICE_BOUNDS, interactionMargin: 46 },
 };
 
 export const MEMORY_ROOM_MAP: PlayableMapAssetEntry = {
   id: 'chapter03-memory-room-v2', file: 'chapter03-memory-room-v2.png', version: '2026-08-09.2', status: 'verified',
-  canvas: { width: 960, height: 540 }, bounds: { x: 70, y: 18, width: 836, height: 486 }, spawn: { x: 570, y: 300 },
+  canvas: { width: 960, height: 540 }, bounds: { x: 82, y: 32, width: 796, height: 456 }, spawn: { x: 570, y: 300 },
   collisions: [
     { x: 210, y: 108, width: 90, height: 92 }, { x: 345, y: 66, width: 165, height: 122 },
     { x: 630, y: 39, width: 100, height: 141 }, { x: 756, y: 75, width: 124, height: 127 },
     { x: 113, y: 218, width: 66, height: 92 }, { x: 183, y: 348, width: 62, height: 48 },
     { x: 358, y: 257, width: 125, height: 69 }, { x: 308, y: 338, width: 221, height: 79 },
     { x: 682, y: 235, width: 118, height: 116 }, { x: 659, y: 405, width: 112, height: 82 },
-  ],
+  ].map((rect) => scaleRectFromCenter(rect)),
   memoryObjects: {
     photo: { marker: { x: 415, y: 65 }, interaction: { x: 415, y: 201 } },
     market: { marker: { x: 204, y: 359 }, interaction: { x: 204, y: 332 } },

@@ -1,4 +1,5 @@
 import { MapScene } from './MapScene';
+import { EARTH_OBSERVATION_ROOM } from './mapVisuals';
 
 /** 챕터2의 마지막 공간 — 우주선 창가. 창문 하나만 있는 최소 맵. */
 export function createWindowScene(): MapScene {
@@ -6,12 +7,13 @@ export function createWindowScene(): MapScene {
     [
       {
         id: 'window',
-        position: { x: 480, y: 160 },
+        position: { x: 480, y: 190 },
         interactionRadius: 56,
         required: true,
         label: '창밖 바라보기',
       },
     ],
     { x: 480, y: 380 },
+    EARTH_OBSERVATION_ROOM,
   );
 }

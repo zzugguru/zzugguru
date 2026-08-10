@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canActivateDevice, canInteract, clearDirections, createFlow, MAP_BOUNDS, movePlayer, PLAYER_SIZE, PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG, transitionFlow } from './mapLogic';
+import { canActivateDevice, canInteract, clearDirections, createFlow, isMapPositionAllowed, MAP_BOUNDS, movePlayer, PLAYER_SIZE, PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG, transitionFlow } from './mapLogic';
 import { MEMORY_ROOM_MAP, SPACESHIP_MAP } from './mapAssetManifest';
 
 describe('Chapter03 research lab map', () => {
@@ -34,6 +34,23 @@ describe('Chapter03 research lab map', () => {
     }
   });
 
+  it('derives runtime boundary overhangs from the checked-in alpha geometry and draw anchor', () => {
+    const destinationOffset = { x: (PLAYER_SIZE - 64) / 2, y: PLAYER_SIZE - 80 + 4 };
+    const widestAlphaBounds = { left: 14, top: 8, right: 50, bottom: 76 };
+    expect(-(destinationOffset.x + widestAlphaBounds.left)).toBe(PLAYER_SPRITE_SIDE_OVERHANG);
+    expect(destinationOffset.x + widestAlphaBounds.right - PLAYER_SIZE).toBe(PLAYER_SPRITE_SIDE_OVERHANG);
+    expect(-(destinationOffset.y + widestAlphaBounds.top)).toBe(PLAYER_SPRITE_TOP_OVERHANG);
+    expect(destinationOffset.y + widestAlphaBounds.bottom).toBe(PLAYER_SIZE);
+
+    for (const map of [SPACESHIP_MAP, MEMORY_ROOM_MAP]) {
+      expect(isMapPositionAllowed(map.spawn, map)).toBe(true);
+      const minimum = { x: map.bounds.x + 5, y: map.bounds.y + 42 };
+      const maximum = { x: map.bounds.x + map.bounds.width - 31, y: map.bounds.y + map.bounds.height - 26 };
+      expect(isMapPositionAllowed(minimum, { ...map, collisions: [] })).toBe(true);
+      expect(isMapPositionAllowed(maximum, { ...map, collisions: [] })).toBe(true);
+    }
+  });
+
   it('allows interaction only beside the reconstruction device', () => {
     expect(canInteract({ x: 650, y: 235 })).toBe(true);
     expect(canInteract({ x: 80, y: 250 })).toBe(false);
@@ -46,7 +63,7 @@ describe('Chapter03 research lab map', () => {
   });
 
   it('uses room-specific furniture collisions after reconstruction', () => {
-    expect(movePlayer(MEMORY_ROOM_MAP.spawn, 8, 0, MEMORY_ROOM_MAP)).toEqual({ x: 602, y: 298 });
+    expect(movePlayer(MEMORY_ROOM_MAP.spawn, 8, 0, MEMORY_ROOM_MAP)).toEqual({ x: 578, y: 300 });
     expect(movePlayer({ x: 700, y: 280 }, 8, 0, MEMORY_ROOM_MAP)).toEqual({ x: 700, y: 280 });
   });
 

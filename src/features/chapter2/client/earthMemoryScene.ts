@@ -1,4 +1,5 @@
 import { MapScene } from './MapScene';
+import { HOLOGRAM_ARCHIVE } from './mapVisuals';
 
 const MEMORY_IDS = ['memory-school', 'memory-market', 'memory-table'];
 
@@ -11,7 +12,7 @@ export function createEarthMemoryScene(): MapScene {
     [
       {
         id: 'memory-school',
-        position: { x: 240, y: 150 },
+        position: { x: 240, y: 275 },
         interactionRadius: 48,
         required: false,
         label: '기록 보기',
@@ -19,7 +20,7 @@ export function createEarthMemoryScene(): MapScene {
       },
       {
         id: 'memory-market',
-        position: { x: 480, y: 150 },
+        position: { x: 480, y: 275 },
         interactionRadius: 48,
         required: false,
         label: '기록 보기',
@@ -27,7 +28,7 @@ export function createEarthMemoryScene(): MapScene {
       },
       {
         id: 'memory-table',
-        position: { x: 720, y: 150 },
+        position: { x: 720, y: 275 },
         interactionRadius: 48,
         required: false,
         label: '기록 보기',
@@ -42,6 +43,7 @@ export function createEarthMemoryScene(): MapScene {
         label: '기록 그만 보기',
       },
     ],
-    { x: 480, y: 300 },
+    { x: 480, y: 340 },
+    HOLOGRAM_ARCHIVE,
   );
 }
