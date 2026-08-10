@@ -2,6 +2,22 @@ import yeongsuIdentityUrl from '../../../assets/yeongsu-guard.png';
 import apartmentStairwellUrl from '../assets/chapter01-apartment-stairwell.png';
 import cctvWallBackgroundUrl from '../assets/chapter01-cctv-wall.png';
 import guardRoomBackgroundUrl from '../assets/chapter01-guard-room.png';
+import topViewBasementUrl from '../assets/chapter01-topview-basement.png';
+import topViewGuardRoomUrl from '../assets/chapter01-topview-guard-room.png';
+import topViewGuardSpriteUrl from '../../../assets/chapter01-yeongsu-guard-sprites.png';
+import {
+  CHAPTER01_STORY_PLAYFIELDS,
+  clampExplorationPoint,
+  explorationForBeat,
+  facingForDirection,
+  isExplorationTargetReached,
+  moveExplorationPlayer,
+  moveExplorationPlayerToward,
+  type Chapter01Direction,
+  type Chapter01ExplorationDefinition,
+  type Chapter01Facing,
+  type Chapter01Point,
+} from '../shared/chapter01Exploration';
 import {
   CHAPTER01_STORY,
   advanceChapter01Story,
@@ -9,6 +25,7 @@ import {
   type Chapter01StoryBeat,
 } from '../shared/chapter01Story';
 import { getContainedRasterGeometry } from '../shared/chapter01Assets';
+import { drawChapter01TopViewSprite } from './chapter01TopViewSprite';
 
 const COLORS = {
   background: '#030712',
@@ -22,6 +39,16 @@ const COLORS = {
 } as const;
 
 const PANEL = { x: 24, y: 372, width: 912, height: 144, radius: 8 } as const;
+const INPUT_FEEDBACK_DURATION = 0.24;
+
+type StoryInputFeedbackKind = 'advance' | 'blocked' | 'move';
+
+interface StoryInputFeedback {
+  x: number;
+  y: number;
+  kind: StoryInputFeedbackKind;
+  remainingSeconds: number;
+}
 
 export class Chapter1StoryGame {
   private readonly context: CanvasRenderingContext2D;
@@ -29,9 +56,21 @@ export class Chapter1StoryGame {
   private readonly guardRoomImage: HTMLImageElement | null;
   private readonly cctvWallImage: HTMLImageElement | null;
   private readonly basementImage: HTMLImageElement | null;
+  private readonly topViewGuardRoomImage: HTMLImageElement | null;
+  private readonly topViewBasementImage: HTMLImageElement | null;
+  private readonly topViewGuardSpriteImage: HTMLImageElement | null;
   private animationId: number | null = null;
+  private lastTimestamp: number | null = null;
+  private animationSeconds = 0;
   private currentIndex = 0;
   private complete = false;
+  private readonly pressedDirections = new Set<Chapter01Direction>();
+  private readonly completedExplorations = new Set<number>();
+  private readonly explorationsAtTarget = new Set<number>();
+  private playerPosition: Chapter01Point = { x: 820, y: 326 };
+  private playerFacing: Chapter01Facing = 'up';
+  private pointerTarget: Chapter01Point | null = null;
+  private inputFeedback: StoryInputFeedback | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -46,6 +85,9 @@ export class Chapter1StoryGame {
     this.guardRoomImage = this.createImage(guardRoomBackgroundUrl);
     this.cctvWallImage = this.createImage(cctvWallBackgroundUrl);
     this.basementImage = this.createImage(apartmentStairwellUrl);
+    this.topViewGuardRoomImage = this.createImage(topViewGuardRoomUrl);
+    this.topViewBasementImage = this.createImage(topViewBasementUrl);
+    this.topViewGuardSpriteImage = this.createImage(topViewGuardSpriteUrl);
   }
 
   private createImage(url: string): HTMLImageElement | null {
@@ -64,6 +106,8 @@ export class Chapter1StoryGame {
 
   mount(): void {
     window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.releaseMovement);
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
@@ -75,47 +119,210 @@ export class Chapter1StoryGame {
 
   stop(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.releaseMovement);
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     if (this.animationId !== null) cancelAnimationFrame(this.animationId);
     this.animationId = null;
+    this.lastTimestamp = null;
+    this.releaseMovement();
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
+    const direction = this.directionForCode(event.code);
+    const exploration = this.activeExploration;
+    if (direction && exploration && !this.explorationComplete) {
+      event.preventDefault();
+      this.pressedDirections.add(direction);
+      this.pointerTarget = null;
+      return;
+    }
     if (!['KeyZ', 'Enter'].includes(event.code) || event.repeat) return;
     event.preventDefault();
-    this.advance();
+    if (this.complete) return;
+    const advanced = this.advance();
+    this.triggerInputFeedback(
+      { x: PANEL.x + PANEL.width - 64, y: PANEL.y + PANEL.height - 28 },
+      advanced ? 'advance' : 'blocked',
+    );
   };
 
-  private readonly handlePointerDown = (): void => {
+  private readonly handleKeyUp = (event: KeyboardEvent): void => {
+    const direction = this.directionForCode(event.code);
+    if (direction) this.pressedDirections.delete(direction);
+  };
+
+  private readonly releaseMovement = (): void => {
+    this.pressedDirections.clear();
+    this.pointerTarget = null;
+  };
+
+  private readonly handlePointerDown = (event: PointerEvent): void => {
     this.canvas.focus();
-    this.advance();
+    if (this.complete) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const point = {
+      x: ((event.clientX - rect.left) / rect.width) * this.canvas.width,
+      y: ((event.clientY - rect.top) / rect.height) * this.canvas.height,
+    };
+    const exploration = this.activeExploration;
+    if (exploration && !this.explorationComplete) {
+      if (isExplorationTargetReached(this.playerPosition, exploration)) {
+        this.completeExploration(exploration);
+        this.triggerInputFeedback(point, 'advance');
+      } else if (point.y < PANEL.y) {
+        this.pointerTarget = clampExplorationPoint(point, exploration);
+        this.triggerInputFeedback(point, 'move');
+      } else {
+        this.triggerInputFeedback(point, 'blocked');
+      }
+      return;
+    }
+    const advanced = this.advance();
+    this.triggerInputFeedback(point, advanced ? 'advance' : 'blocked');
   };
 
-  private advance(): void {
+  private advance(): boolean {
+    const exploration = this.activeExploration;
+    if (exploration && !this.explorationComplete) {
+      if (isExplorationTargetReached(this.playerPosition, exploration)) {
+        this.completeExploration(exploration);
+        return true;
+      } else {
+        this.liveRegion.textContent = exploration.objective;
+        return false;
+      }
+    }
+
     const progress = advanceChapter01Story(this.currentIndex, CHAPTER01_STORY.length);
     this.currentIndex = progress.index;
     this.complete = progress.complete;
+    this.prepareExploration();
     this.announceCurrentBeat();
 
-    if (this.complete) {
-      this.render();
-      this.stop();
-      this.onComplete();
-    }
+    return true;
+  }
+
+  private triggerInputFeedback(point: Chapter01Point, kind: StoryInputFeedbackKind): void {
+    this.inputFeedback = {
+      x: Math.max(0, Math.min(this.canvas.width, point.x)),
+      y: Math.max(0, Math.min(this.canvas.height, point.y)),
+      kind,
+      remainingSeconds: INPUT_FEEDBACK_DURATION,
+    };
+    this.render();
   }
 
   private announceCurrentBeat(): void {
     const beat = CHAPTER01_STORY[this.currentIndex];
     const content = beat.speaker ? `${beat.speaker}. ${beat.text}` : beat.text;
+    const exploration = this.activeExploration;
+    if (exploration && !this.complete) {
+      this.liveRegion.textContent = this.explorationComplete
+        ? `${content} 목표 완료. Z 또는 Enter로 계속하세요.`
+        : `${content} ${exploration.objective} 방향키, WASD 또는 화면 클릭으로 이동합니다.`;
+      return;
+    }
     this.liveRegion.textContent = this.complete
       ? `${content} Chapter 01 끝.`
       : `${content} ${this.currentIndex + 1} / ${CHAPTER01_STORY.length}.`;
   }
 
-  private readonly loop = (): void => {
+  private readonly loop = (timestamp: number): void => {
+    const deltaSeconds = this.lastTimestamp === null ? 0 : (timestamp - this.lastTimestamp) / 1000;
+    this.lastTimestamp = timestamp;
+    this.animationSeconds += deltaSeconds;
+    this.updateExploration(deltaSeconds);
+    if (this.inputFeedback) {
+      this.inputFeedback.remainingSeconds = Math.max(0, this.inputFeedback.remainingSeconds - deltaSeconds);
+      if (this.inputFeedback.remainingSeconds === 0) this.inputFeedback = null;
+    }
     this.render();
+    if (this.complete && !this.inputFeedback) {
+      this.stop();
+      this.onComplete();
+      return;
+    }
     this.animationId = requestAnimationFrame(this.loop);
   };
+
+  private get activeExploration(): Chapter01ExplorationDefinition | undefined {
+    return explorationForBeat(this.currentIndex);
+  }
+
+  private get explorationComplete(): boolean {
+    return this.completedExplorations.has(this.currentIndex);
+  }
+
+  private prepareExploration(): void {
+    const exploration = this.activeExploration;
+    this.releaseMovement();
+    if (!exploration || this.explorationComplete) return;
+    this.explorationsAtTarget.delete(exploration.beatIndex);
+    this.playerPosition = { ...exploration.start };
+    this.playerFacing = exploration.scene === 'guard-room' ? 'up' : exploration.scene === 'basement' ? 'right' : 'up';
+  }
+
+  private completeExploration(exploration: Chapter01ExplorationDefinition): void {
+    this.completedExplorations.add(exploration.beatIndex);
+    this.releaseMovement();
+    this.announceCurrentBeat();
+  }
+
+  private updateExploration(deltaSeconds: number): void {
+    const exploration = this.activeExploration;
+    if (!exploration || this.explorationComplete) return;
+
+    const direction = this.activeDirection;
+    if (direction) {
+      this.playerFacing = facingForDirection(direction, this.playerFacing);
+      this.playerPosition = moveExplorationPlayer(this.playerPosition, direction, deltaSeconds, exploration);
+      this.announceExplorationTargetTransition(exploration);
+      return;
+    }
+    if (!this.pointerTarget) return;
+
+    const movement = moveExplorationPlayerToward(
+      this.playerPosition,
+      this.pointerTarget,
+      deltaSeconds,
+      exploration,
+    );
+    this.playerPosition = movement.position;
+    this.playerFacing = movement.facing;
+    if (movement.reached) this.pointerTarget = null;
+    this.announceExplorationTargetTransition(exploration);
+  }
+
+  private announceExplorationTargetTransition(exploration: Chapter01ExplorationDefinition): void {
+    const reached = isExplorationTargetReached(this.playerPosition, exploration);
+    const wasReached = this.explorationsAtTarget.has(exploration.beatIndex);
+    if (reached === wasReached) return;
+
+    if (reached) {
+      this.explorationsAtTarget.add(exploration.beatIndex);
+      this.liveRegion.textContent = `목표에 도착했습니다. ${exploration.interactLabel}: Z, Enter 또는 클릭으로 상호작용하세요.`;
+      return;
+    }
+
+    this.explorationsAtTarget.delete(exploration.beatIndex);
+    this.liveRegion.textContent = `목표 범위를 벗어났습니다. ${exploration.objective}`;
+  }
+
+  private get activeDirection(): Chapter01Direction | null {
+    for (const direction of ['up', 'down', 'left', 'right'] as const) {
+      if (this.pressedDirections.has(direction)) return direction;
+    }
+    return null;
+  }
+
+  private directionForCode(code: string): Chapter01Direction | null {
+    if (code === 'ArrowUp' || code === 'KeyW') return 'up';
+    if (code === 'ArrowDown' || code === 'KeyS') return 'down';
+    if (code === 'ArrowLeft' || code === 'KeyA') return 'left';
+    if (code === 'ArrowRight' || code === 'KeyD') return 'right';
+    return null;
+  }
 
   private render(): void {
     const beat = CHAPTER01_STORY[this.currentIndex];
@@ -124,6 +331,31 @@ export class Chapter1StoryGame {
 
     if (beat.backdrop === 'title') this.drawTitle();
     else this.drawStoryPanel(beat);
+    this.drawInputFeedback();
+  }
+
+  private drawInputFeedback(): void {
+    const feedback = this.inputFeedback;
+    if (!feedback) return;
+    const progress = feedback.remainingSeconds / INPUT_FEEDBACK_DURATION;
+    const color = feedback.kind === 'blocked' ? COLORS.danger : COLORS.feedback;
+    const radius = 10 + (1 - progress) * 42;
+
+    this.context.save();
+    this.context.globalAlpha = 0.06 * progress;
+    this.context.fillStyle = color;
+    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.globalAlpha = 0.35 + progress * 0.55;
+    this.context.strokeStyle = color;
+    this.context.lineWidth = 2 + progress * 2;
+    this.context.beginPath();
+    this.context.arc(feedback.x, feedback.y, radius, 0, Math.PI * 2);
+    this.context.stroke();
+    this.context.fillStyle = color;
+    this.context.beginPath();
+    this.context.arc(feedback.x, feedback.y, 3 + progress * 2, 0, Math.PI * 2);
+    this.context.fill();
+    this.context.restore();
   }
 
   private drawBackdrop(beat: Chapter01StoryBeat): void {
@@ -132,12 +364,84 @@ export class Chapter1StoryGame {
     context.fillStyle = COLORS.background;
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    if (beat.backdrop === 'basement') this.drawBasement();
+    if (beat.backdrop === 'basement') this.drawTopViewBasement();
     else if (beat.backdrop === 'cctv' || beat.backdrop === 'epilogue') this.drawCctvWall(beat.backdrop);
     else if (beat.backdrop === 'whiteout') this.drawWhiteout();
     else if (beat.backdrop === 'morning') this.drawGuardRoom(true);
-    else if (beat.backdrop === 'guard-room') this.drawGuardRoom(false);
+    else if (beat.backdrop === 'guard-room') this.drawTopViewGuardRoom();
     else this.drawTitleBackdrop();
+  }
+
+  private drawTopViewGuardRoom(): void {
+    if (this.topViewGuardRoomImage?.complete && this.topViewGuardRoomImage.naturalWidth > 0) {
+      this.context.imageSmoothingEnabled = false;
+      this.context.drawImage(this.topViewGuardRoomImage, 0, 0, this.canvas.width, this.canvas.height);
+      this.context.fillStyle = 'rgb(3 7 18 / 14%)';
+      this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    } else {
+      this.drawGuardRoom(false);
+    }
+    this.drawTopViewExplorationLayer('guard-room');
+  }
+
+  private drawTopViewBasement(): void {
+    if (this.topViewBasementImage?.complete && this.topViewBasementImage.naturalWidth > 0) {
+      this.context.imageSmoothingEnabled = false;
+      this.context.drawImage(this.topViewBasementImage, 0, 0, this.canvas.width, this.canvas.height);
+      this.context.fillStyle = 'rgb(3 7 18 / 22%)';
+      this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    } else {
+      this.drawBasement();
+    }
+    this.drawTopViewExplorationLayer('basement');
+  }
+
+  private drawTopViewExplorationLayer(scene: 'guard-room' | 'basement'): void {
+    const exploration = this.activeExploration;
+    if (exploration?.scene === scene) this.drawExplorationTarget(exploration);
+
+    this.drawBoundedTopViewSprite(this.playerPosition, this.playerFacing, COLORS.feedback, scene);
+  }
+
+  private drawBoundedTopViewSprite(
+    position: Chapter01Point,
+    facing: Chapter01Facing,
+    fallbackColor: string,
+    scene: 'guard-room' | 'basement' | 'whiteout',
+  ): void {
+    const playfield = CHAPTER01_STORY_PLAYFIELDS[scene];
+    this.context.save();
+    this.context.beginPath();
+    this.context.rect(
+      playfield.left,
+      playfield.top,
+      playfield.right - playfield.left,
+      playfield.bottom - playfield.top,
+    );
+    this.context.clip();
+    if (!drawChapter01TopViewSprite(this.context, this.topViewGuardSpriteImage, position, facing)) {
+      this.context.fillStyle = fallbackColor;
+      this.context.fillRect(position.x - 13, position.y - 26, 26, 26);
+    }
+    this.context.restore();
+  }
+
+  private drawExplorationTarget(exploration: Chapter01ExplorationDefinition): void {
+    const pulse = 0.5 + (Math.sin(this.animationSeconds * 5) + 1) * 0.25;
+    this.context.save();
+    this.context.globalAlpha = this.explorationComplete ? 0.45 : pulse;
+    this.context.strokeStyle = exploration.scene === 'whiteout' ? COLORS.danger : COLORS.feedback;
+    this.context.lineWidth = 3;
+    this.context.beginPath();
+    this.context.arc(
+      exploration.target.x,
+      exploration.target.y,
+      exploration.targetRadius - 6 + pulse * 8,
+      0,
+      Math.PI * 2,
+    );
+    this.context.stroke();
+    this.context.restore();
   }
 
   private drawTitleBackdrop(): void {
@@ -275,12 +579,37 @@ export class Chapter1StoryGame {
   }
 
   private drawWhiteout(): void {
-    const gradient = this.context.createRadialGradient(480, 180, 10, 480, 180, 520);
+    const phase = Math.max(0, this.currentIndex - 39);
+    const pulse = 0.5 + (Math.sin(this.animationSeconds * 4) + 1) * 0.25;
+    const centerY = 142 + phase * 18;
+    const gradient = this.context.createRadialGradient(480, centerY, 8, 480, centerY, 520);
     gradient.addColorStop(0, '#f9fafb');
-    gradient.addColorStop(0.28, '#c7d2fe');
+    gradient.addColorStop(0.18 + pulse * 0.12, '#c7d2fe');
     gradient.addColorStop(1, '#312e81');
     this.context.fillStyle = gradient;
-    this.context.fillRect(0, 0, this.canvas.width, 372);
+    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.context.save();
+    this.context.globalAlpha = 0.16 + phase * 0.1;
+    this.context.fillStyle = COLORS.text;
+    for (let index = 0; index < 12; index += 1) {
+      const width = 80 + ((index * 97) % 260);
+      const x = (index * 173 + Math.floor(this.animationSeconds * 90)) % (this.canvas.width + width) - width;
+      const y = 42 + index * 25;
+      this.context.fillRect(x, y, width, 2 + (index % 3));
+    }
+    this.context.restore();
+
+    const exploration = this.activeExploration;
+    if (exploration?.scene === 'whiteout') this.drawExplorationTarget(exploration);
+
+    const renderPosition = phase === 0
+      ? this.playerPosition
+      : { x: 480 + Math.sin(this.animationSeconds * 10) * (4 + phase * 3), y: 260 - phase * 48 };
+    this.context.save();
+    this.context.globalAlpha = Math.max(0.34, 0.9 - phase * 0.22);
+    this.drawBoundedTopViewSprite(renderPosition, phase === 0 ? this.playerFacing : 'up', COLORS.background, 'whiteout');
+    this.context.restore();
   }
 
   private drawHeader(beat: Chapter01StoryBeat): void {
@@ -337,13 +666,19 @@ export class Chapter1StoryGame {
     this.drawWrappedText(beat.text, PANEL.x + 20, textY, PANEL.width - 40, 29);
 
     context.textAlign = 'right';
-    context.fillStyle = this.complete ? COLORS.danger : COLORS.muted;
+    const exploration = this.activeExploration;
+    const footer = exploration
+      ? this.explorationComplete
+        ? '목표 완료 · Z / Enter / 클릭  ▶ 다음'
+        : isExplorationTargetReached(this.playerPosition, exploration)
+          ? `Z / Enter / 아래 패널 클릭 · ${exploration.interactLabel}`
+          : `방향키 / WASD / 화면 클릭 · ${exploration.objective}`
+      : this.complete
+        ? 'CHAPTER 01 · 끝'
+        : 'Z · Enter · 클릭  ▶ 다음';
+    context.fillStyle = exploration && !this.explorationComplete ? COLORS.feedback : this.complete ? COLORS.danger : COLORS.muted;
     context.font = '16px Inter, Pretendard, system-ui, sans-serif';
-    context.fillText(
-      this.complete ? 'CHAPTER 01 · 끝' : 'Z · Enter · 클릭  ▶ 다음',
-      PANEL.x + PANEL.width - 20,
-      PANEL.y + PANEL.height - 16,
-    );
+    context.fillText(footer, PANEL.x + PANEL.width - 20, PANEL.y + PANEL.height - 16);
   }
 
   private drawWrappedText(text: string, x: number, y: number, maxWidth: number, lineHeight: number): void {

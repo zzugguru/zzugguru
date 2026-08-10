@@ -106,6 +106,18 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
+  chapter01-story-exploration:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.feedback}"
+    rounded: "{rounded.md}"
+  chapter01-whiteout-interaction:
+    backgroundColor: "{colors.surface-accent}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+  chapter01-story-input-feedback:
+    backgroundColor: "{colors.surface-accent}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.sm}"
 ---
 
 # ZZUGGURU Design System
@@ -173,6 +185,8 @@ YAML front matter의 토큰을 디자인 값의 단일 원본으로 취급한다
 ## Do's and Don'ts
 
 `rooftop-escape-progress`는 Chapter 01 층별 옥상 탈출 진행도를 표시한다. `rooftop-escape-control`은 키보드와 같은 좌우 이동을 제공하는 캔버스 화면 조작 영역이며, `feedback`은 진행 방향, `danger`는 추격과 피격 상태에만 사용한다.
+
+`chapter01-story-exploration`은 Chapter 01 대사 사이의 짧은 탑뷰 탐색 목표를 안내한다. 이동 중에는 `feedback`으로 목표와 상호작용 가능 범위를 표시하고, 대사 패널 안의 기존 입력 안내와 같은 위계로 배치한다. `chapter01-whiteout-interaction`은 흰 화면 구간의 잔상 목표와 저항 상태에만 사용하며, 리듬 타이밍 대신 방향 이동과 단일 확인 입력을 안내한다. 두 컴포넌트 모두 960×540 캔버스의 하단 대사 패널과 겹치지 않는 상단 플레이 영역을 사용한다. `chapter01-story-input-feedback`은 Z·Enter·클릭 입력 위치에 0.24초 동안 나타나는 비차단 플래시와 확산 링이다. 정상 진행과 이동은 `feedback`, 탐색 목표 미완료로 거절된 진행 입력만 `danger`를 사용하며 대사 읽기를 가리지 않는 낮은 불투명도를 유지한다.
 
 ### Do
 

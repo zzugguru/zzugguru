@@ -69,6 +69,39 @@ export const CHAPTER01_BACKGROUNDS = {
   },
 } as const;
 
+export const CHAPTER01_TOPVIEW_BACKGROUNDS = {
+  guardRoom: {
+    path: 'src/features/chapter1/assets/chapter01-topview-guard-room.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+  basement: {
+    path: 'src/features/chapter1/assets/chapter01-topview-basement.png',
+    width: 960,
+    height: 540,
+    format: 'PNG',
+    colorMode: 'RGB',
+  },
+} as const;
+
+export const CHAPTER01_TOPVIEW_SPRITE = {
+  path: 'src/assets/chapter01-yeongsu-guard-sprites.png',
+  width: 256,
+  height: 80,
+  format: 'PNG',
+  colorMode: 'RGBA',
+  frameWidth: 64,
+  frameHeight: 80,
+  alphaBounds: [
+    { left: 14, top: 8, right: 50, bottom: 76 },
+    { left: 18, top: 8, right: 46, bottom: 76 },
+    { left: 18, top: 8, right: 46, bottom: 76 },
+    { left: 14, top: 8, right: 50, bottom: 76 },
+  ],
+} as const;
+
 export const CHAPTER01_SPRITES = {
   yeongsu: {
     sourceWidth: 1254,

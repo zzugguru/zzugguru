@@ -1,11 +1,10 @@
 import apartmentStairwellUrl from '../assets/chapter01-apartment-stairwell.png';
 import rooftopBackgroundUrl from '../assets/chapter01-rooftop.png';
+import yeongsuGuardSpriteUrl from '../../../assets/chapter01-yeongsu-guard-sprites.png';
 import monsterSpriteUrl from '../assets/cctv-monster-sprite.png';
-import yeongsuSpriteUrl from '../assets/yeongsu-guard-sprite.png';
 import {
   CHAPTER01_SPRITES,
   getSpriteDrawGeometry,
-  type Chapter01SpriteMetadata,
 } from '../shared/chapter01Assets';
 import {
   ESCAPE_FLOORS,
@@ -14,6 +13,11 @@ import {
   stepRooftopEscape,
   type RooftopEscapeState,
 } from '../shared/rooftopEscapeLogic';
+import {
+  getEscapeYeongsuGeometry,
+  horizontalFacingForDirection,
+  type HorizontalFacing,
+} from './chapter01EscapeSprite';
 
 type EscapeScreen = 'intro' | 'playing' | 'caught' | 'escaped';
 
@@ -41,6 +45,8 @@ export class RooftopEscapeGame {
   private leftPressed = false;
   private rightPressed = false;
   private pointerDirection: -1 | 0 | 1 = 0;
+  private playerFacing: HorizontalFacing = 1;
+  private monsterFacing: HorizontalFacing = 1;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -52,7 +58,7 @@ export class RooftopEscapeGame {
 
     this.backgroundImage = this.createImage(apartmentStairwellUrl);
     this.rooftopImage = this.createImage(rooftopBackgroundUrl);
-    this.playerImage = this.createImage(yeongsuSpriteUrl);
+    this.playerImage = this.createImage(yeongsuGuardSpriteUrl);
     this.monsterImage = this.createImage(monsterSpriteUrl);
   }
 
@@ -141,6 +147,7 @@ export class RooftopEscapeGame {
     this.screen = 'playing';
     this.lastTimestamp = null;
     this.releaseInput();
+    this.faceCurrentExit();
     this.announceFloor();
   }
 
@@ -156,8 +163,18 @@ export class RooftopEscapeGame {
     if (this.screen !== 'playing') return;
 
     const previousFloor = this.state.floorIndex;
-    this.state = stepRooftopEscape(this.state, this.direction, deltaSeconds);
-    if (this.state.floorIndex !== previousFloor) this.announceFloor();
+    const direction = this.direction;
+    this.playerFacing = horizontalFacingForDirection(direction, this.playerFacing);
+    this.state = stepRooftopEscape(this.state, direction, deltaSeconds);
+    if (this.state.floorIndex !== previousFloor) {
+      this.faceCurrentExit();
+      this.announceFloor();
+    } else {
+      this.monsterFacing = horizontalFacingForDirection(
+        Math.sign(this.state.playerX - this.state.monsterX) as -1 | 0 | 1,
+        this.monsterFacing,
+      );
+    }
 
     if (this.state.result === 'caught') {
       this.screen = 'caught';
@@ -178,6 +195,12 @@ export class RooftopEscapeGame {
 
   private announceIntro(): void {
     this.liveRegion.textContent = '영수가 주위를 둘러보자 멀리 여자의 형체가 보였습니다. 사람처럼 보이지 않습니다. 옥상까지 도망치세요.';
+  }
+
+  private faceCurrentExit(): void {
+    const exitDirection: HorizontalFacing = exitXForFloor(this.state.floorIndex) < this.state.playerX ? -1 : 1;
+    this.playerFacing = exitDirection;
+    this.monsterFacing = exitDirection;
   }
 
   private announceFloor(): void {
@@ -215,8 +238,8 @@ export class RooftopEscapeGame {
     context.fillStyle = `rgb(3 7 18 / ${42 + this.state.floorIndex * 6}%)`;
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawStairDoor(exitXForFloor(this.state.floorIndex));
-    this.drawCharacter(this.playerImage, this.state.playerX, 402, CHAPTER01_SPRITES.yeongsu, false);
-    this.drawCharacter(this.monsterImage, this.state.monsterX, 406, CHAPTER01_SPRITES.monster, true);
+    this.drawYeongsu(this.state.playerX, 402, this.playerFacing);
+    this.drawMonster(this.state.monsterX, 406, this.monsterFacing);
   }
 
   private drawStairDoor(x: number): void {
@@ -239,36 +262,54 @@ export class RooftopEscapeGame {
     context.lineWidth = 1;
   }
 
-  private drawCharacter(
-    image: HTMLImageElement | null,
+  private drawYeongsu(
     x: number,
     floorY: number,
-    metadata: Chapter01SpriteMetadata,
-    monster: boolean,
+    facing: HorizontalFacing,
   ): void {
     const context = this.context;
-    const geometry = getSpriteDrawGeometry(metadata, x, floorY);
+    const geometry = getEscapeYeongsuGeometry(floorY);
     context.save();
-    if (monster) {
-      context.shadowColor = COLORS.danger;
-      context.shadowBlur = 18;
-    }
-
-    if (image?.complete && image.naturalWidth > 0) {
-      context.imageSmoothingEnabled = true;
-      context.drawImage(image, geometry.x, geometry.y, geometry.width, geometry.height);
-    } else {
-      context.fillStyle = monster ? COLORS.background : COLORS.primary;
-      context.beginPath();
-      context.ellipse(
-        x,
-        floorY - metadata.renderHeight / 2,
-        monster ? 28 : 19,
-        metadata.renderHeight / 2,
-        0,
-        0,
-        Math.PI * 2,
+    context.translate(x, 0);
+    context.scale(facing, 1);
+    if (this.playerImage?.complete && this.playerImage.naturalWidth > 0) {
+      context.imageSmoothingEnabled = false;
+      context.drawImage(
+        this.playerImage,
+        geometry.sourceX,
+        geometry.sourceY,
+        geometry.sourceWidth,
+        geometry.sourceHeight,
+        geometry.destinationX,
+        geometry.destinationY,
+        geometry.destinationWidth,
+        geometry.destinationHeight,
       );
+    } else {
+      context.fillStyle = COLORS.primary;
+      context.beginPath();
+      context.ellipse(0, floorY - 68, 28, 68, 0, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.restore();
+  }
+
+  private drawMonster(x: number, floorY: number, facing: HorizontalFacing): void {
+    const context = this.context;
+    const metadata = CHAPTER01_SPRITES.monster;
+    const geometry = getSpriteDrawGeometry(metadata, 0, floorY);
+    context.save();
+    context.translate(x, 0);
+    context.scale(facing, 1);
+    context.shadowColor = COLORS.danger;
+    context.shadowBlur = 18;
+    if (this.monsterImage?.complete && this.monsterImage.naturalWidth > 0) {
+      context.imageSmoothingEnabled = true;
+      context.drawImage(this.monsterImage, geometry.x, geometry.y, geometry.width, geometry.height);
+    } else {
+      context.fillStyle = COLORS.background;
+      context.beginPath();
+      context.ellipse(0, floorY - metadata.renderHeight / 2, 28, metadata.renderHeight / 2, 0, 0, Math.PI * 2);
       context.fill();
     }
     context.restore();
@@ -320,7 +361,7 @@ export class RooftopEscapeGame {
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     context.save();
     context.globalAlpha = 0.72;
-    this.drawCharacter(this.monsterImage, 820, 420, CHAPTER01_SPRITES.monster, true);
+    this.drawMonster(820, 420, -1);
     context.restore();
     context.textAlign = 'center';
     context.fillStyle = COLORS.muted;
@@ -359,7 +400,7 @@ export class RooftopEscapeGame {
       context.fillStyle = COLORS.surface;
       context.fillRect(0, 376, this.canvas.width, 164);
     }
-    this.drawCharacter(this.playerImage, 480, 407, CHAPTER01_SPRITES.yeongsu, false);
+    this.drawYeongsu(480, 407, this.playerFacing);
   }
 
   private drawResult(escaped: boolean): void {
