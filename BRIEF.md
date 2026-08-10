@@ -8,6 +8,32 @@
 
 ## Developer Request
 
+### Active Request — deploy the default branch to GitHub Pages (supersedes the older requests below)
+
+#### Task
+
+Make pushes merged into the repository default branch deploy the built game to GitHub Pages automatically.
+
+#### Included Scope
+
+- Use `develop`, confirmed by `refs/remotes/origin/HEAD`, as the sole automatic production deployment branch.
+- Remove `Feat-test` and `main` as Pages push triggers; retain an explicit manual dispatch path for recovery.
+- Align Pull Request checks and repository release documentation with `develop`.
+- Preserve the Vite project-site base `/zzugguru/` and the official Pages artifact/deployment flow.
+- Add a repository-level regression test for branch triggers, Pages permissions/environment, artifact path, deploy dependency, and Vite base.
+
+#### Excluded Scope
+
+- Pushing, merging, changing GitHub repository settings, enabling Pages in the GitHub UI, custom domains, or altering branch protection through the API.
+- Application gameplay or visual changes.
+
+#### Done When
+
+- A push to `develop` runs verification, builds `dist`, uploads the Pages artifact, and deploys it through the `github-pages` environment.
+- Pushes to `main` or `Feat-test` do not trigger production Pages deployment.
+- Pull Requests into `develop` run the verification workflow without deploying.
+- Local required checks and one independent Terra review pass.
+
 ### Active Request — chapter selection UI refresh (supersedes the older requests below)
 
 #### Task
@@ -137,6 +163,8 @@ Update Chapter 1 only so its keyboard interface follows Chapter 3, and redesign 
 
 ## Agent Understanding
 
+The repository already has the correct Vite project base and official two-job Pages artifact flow, but its push trigger does not include the actual default branch. The deployment and PR workflows will be aligned to `develop`, feature/test branches will not deploy production, and a manual dispatch will remain available. Documentation and a repository-level regression test will make the branch policy and required Pages permissions explicit. Remote settings and the actual push/merge remain outside this local change.
+
 The opening screen will retain its existing story background but gain a clearer hierarchy: a compact title/progress introduction followed by three structured chapter cards. Each card will retain stable number, title, premise, status, and action elements while the existing persistent sequential progression controls disabled, locked, and next-playable states. No raster or gameplay changes are included. Existing design tokens will be reused, new component variants will be documented in `DESIGN.md`, and responsive/accessibility behavior will be covered by tests.
 
 새 브라우저에서는 Chapter 1만 실행할 수 있고, 완료 순서에 따라 Chapter 2와 Chapter 3을 단조 증가 방식으로 해금한다. 최고 해금 단계는 버전이 포함된 `localStorage` 레코드로 보존하며 읽기·쓰기 예외와 잘못된 값은 Chapter 1-only 상태로 안전하게 처리한다. Chapter 1 및 Chapter 2 완료 시 기존 게임의 RAF와 입력 리스너를 먼저 정리한 뒤 다음 챕터를 자동 시작한다. 메뉴 버튼은 실제 `disabled`와 잠금 사유를 함께 제공한다. 저장 초기화 UI, 서버 동기화, 게임 내용 변경은 범위 밖이다.
@@ -145,6 +173,9 @@ The opening screen will retain its existing story background but gain a clearer 
 병합 충돌에 남은 기존 단일 이미지 구현 대신 새 `scene_cctv` 정상/귀신 쌍 선택을 기준으로 CCTV 렌더링을 구성한다. 이전 로직에서 개선한 채널 clamp, 자동 다음 채널, 오답·경계 피드백과 E/Enter 안내는 유지한다. 이미지가 아직 로드되지 않았거나 유효하지 않으면 기본 화면을 표시하되 상태 진행은 막지 않는다.
 
 ## Agent Questions
+
+- GitHub reports `develop` as the repository default branch, while the existing Pages workflow and release documentation describe `main` (and the workflow additionally deploys `Feat-test`). Recommended: make `develop` the sole automatic production deployment branch and align PR checks/docs; alternative: keep `main` as the intended release branch and change the repository default branch outside this workspace.
+- Resolved 2026-08-10: developer approved the recommended `develop`-only production deployment policy.
 
 없음. 사용자가 방금 병합한 CCTV 로직을 기준으로 수정하도록 명시했다.
 
@@ -155,6 +186,14 @@ The opening screen will retain its existing story background but gain a clearer 
 - 2026-08-10: 기존 3장 단일 기억 이미지 방식 대신 방금 병합된 채널별 정상/귀신 6장 전환 로직을 사용한다.
 
 ## Agent Result
+
+- Aligned automatic GitHub Pages production deployment with the confirmed default branch, `develop`; removed `main` and `Feat-test` push triggers and retained `workflow_dispatch` for manual recovery.
+- Aligned Pull Request verification and all release/process documentation with `develop`.
+- Preserved Vite `base: '/zzugguru/'` and the official build → Pages artifact → `github-pages` environment deployment flow.
+- Added `tests/githubPagesDeployment.test.js` to enforce branch scope, exact supported Pages action versions, permissions, artifact path, build dependency, environment, and Vite base.
+- Verification passed: `npm run typecheck`, `npm run test` (69 files, 332 tests), `npm run build`, and `git diff --check`; focused post-fix deployment tests passed 2/2.
+- Independent Terra review found one P1 risk: undocumented Pages action majors. Pinned `configure-pages@v5`, `upload-pages-artifact@v4`, and `deploy-pages@v4`; the same reviewer verified the fix with no regression.
+- Residual external step: repository Settings → Pages → Source must be `GitHub Actions`, and these local changes must be merged/pushed to `develop`; no remote settings, commit, push, workflow run, or live-site check was performed.
 
 - Refreshed the opening chapter selection into three structured story cards while preserving the existing cinematic background and sequential unlock behavior.
 - Added a live unlocked-chapter summary and distinct current, completed/replayable, and locked card states with visible prerequisites and accessible labels.

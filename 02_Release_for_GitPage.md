@@ -2,14 +2,14 @@
 
 이 문서는 로컬에서 확인한 ZZUGGURU 웹 게임을 GitHub Pages에 배포하는 방법을 설명한다.
 
-이 저장소는 **로컬에서 먼저 확인하고, Pull Request에서는 자동 검사만 실행하며, `main`에 병합되는 순간 GitHub Pages에 자동 배포**되도록 구성되어 있다. 저장소의 설정 파일은 준비되어 있지만 GitHub 웹 화면에서 Pages를 활성화하는 작업은 관리자가 최초 한 번 수행해야 한다.
+이 저장소는 **로컬에서 먼저 확인하고, Pull Request에서는 자동 검사만 실행하며, 기본 브랜치인 `develop`에 병합되는 순간 GitHub Pages에 자동 배포**되도록 구성되어 있다. 저장소의 설정 파일은 준비되어 있지만 GitHub 웹 화면에서 Pages를 활성화하는 작업은 관리자가 최초 한 번 수행해야 한다.
 
 ```text
 최초 1회
 GitHub Pages의 Source를 GitHub Actions로 선택
 
 이후 매 작업
-로컬 개발·검증 → PR 자동 검사 → 리뷰·main 병합 → 자동 빌드·배포
+로컬 개발·검증 → PR 자동 검사 → 리뷰·develop 병합 → 자동 빌드·배포
 ```
 
 ---
@@ -73,7 +73,7 @@ export default defineConfig({
 
 ### 2.2 Pull Request 검증 워크플로
 
-`.github/workflows/pull-request-checks.yml`은 `main` 대상 Pull Request가 생성되거나 새 commit이 push될 때 실행된다.
+`.github/workflows/pull-request-checks.yml`은 `develop` 대상 Pull Request가 생성되거나 새 commit이 push될 때 실행된다.
 
 ```text
 npm ci
@@ -89,16 +89,17 @@ npm run build
 
 이 워크플로에는 Pages 쓰기 권한과 배포 단계가 없다. 따라서 기능 브랜치와 Pull Request의 코드는 운영 사이트에 배포되지 않는다. 새로운 push가 들어오면 이전 검사는 취소하고 최신 commit을 다시 검사한다.
 
-### 2.3 `main` 자동 배포 워크플로
+### 2.3 `develop` 자동 배포 워크플로
 
 `.github/workflows/deploy-pages.yml`은 다음 상황에만 실행된다.
 
-- Pull Request가 `main`에 병합되어 `main` push가 발생했을 때
+- Pull Request가 `develop`에 병합되어 `develop` push가 발생했을 때
+- Actions 탭에서 `workflow_dispatch`로 수동 실행했을 때
 
 워크플로는 PR과 동일한 검증을 다시 실행한 뒤 Vite의 `dist/`를 업로드한다. 검증이나 빌드 하나라도 실패하면 `deploy` 작업이 실행되지 않으므로 기존 운영 사이트가 그대로 유지된다.
 
 ```text
-main push
+develop push
   ↓
 타입 검사·테스트·디자인 검사·빌드
   ↓ 성공한 경우에만
@@ -109,12 +110,12 @@ GitHub Pages 배포
 
 액션 버전은 시간이 지나면서 바뀔 수 있다. 실제 설정 시점에 이 문서 하단의 Vite 및 GitHub 공식 문서에서 현재 권장 버전을 함께 확인한다. 보안을 더 엄격하게 운영할 때는 버전 태그 대신 검증된 commit SHA로 액션 버전을 고정할 수 있다.
 
-### 2.4 `main` 직접 push 차단
+### 2.4 `develop` 직접 push 차단
 
-Actions의 `push: main` 조건은 Pull Request 병합뿐 아니라 직접 push에도 반응한다. 따라서 “검증된 Pull Request를 병합할 때만 배포”를 보장하려면 GitHub에서 `main` 보호 규칙을 반드시 활성화해야 한다.
+Actions의 `push: develop` 조건은 Pull Request 병합뿐 아니라 직접 push에도 반응한다. 따라서 “검증된 Pull Request를 병합할 때만 배포”를 보장하려면 GitHub에서 `develop` 보호 규칙을 반드시 활성화해야 한다.
 
 1. 저장소의 **Settings → Rules → Rulesets**를 연다.
-2. `main`을 대상으로 하는 branch ruleset을 만들고 Enforcement status를 `Active`로 설정한다.
+2. `develop`을 대상으로 하는 branch ruleset을 만들고 Enforcement status를 `Active`로 설정한다.
 3. **Require a pull request before merging**을 활성화한다.
 4. **Require status checks to pass**를 활성화하고 `Pull Request Checks / Verify`를 필수 검사로 추가한다.
 5. 팀 정책에 따라 최소 승인 인원을 설정하고, 일반 개발자가 규칙을 우회하지 못하도록 bypass 목록을 확인한다.
@@ -135,7 +136,7 @@ GitHub Actions 방식에서는 빌드 결과인 `dist/`를 별도 브랜치에 �
 
 ### 2.6 최초 배포 확인
 
-설정 파일을 `main`에 merge하면 워크플로가 자동 실행된다. GitHub의 **Actions** 탭에서 `build`와 `deploy`가 모두 초록색으로 끝났는지 확인한다.
+설정 파일을 `develop`에 merge하면 워크플로가 자동 실행된다. GitHub의 **Actions** 탭에서 `build`와 `deploy`가 모두 초록색으로 끝났는지 확인한다.
 
 배포 주소는 다음 위치에서 확인할 수 있다.
 
@@ -185,7 +186,7 @@ npm run preview
 git push -u origin feature/example
 ```
 
-기능 브랜치를 push하면 Pull Request의 `Pull Request Checks / Verify`가 검사만 수행한다. 따라서 **기능 브랜치를 push한 것만으로는 운영 사이트가 바뀌지 않는다.** 자동 검사와 개발자 검토를 마치고 Pull Request를 `main`에 merge하면 별도의 배포 명령 없이 자동 배포가 시작된다.
+기능 브랜치를 push하면 Pull Request의 `Pull Request Checks / Verify`가 검사만 수행한다. 따라서 **기능 브랜치를 push한 것만으로는 운영 사이트가 바뀌지 않는다.** 자동 검사와 개발자 검토를 마치고 Pull Request를 `develop`에 merge하면 별도의 배포 명령 없이 자동 배포가 시작된다.
 
 ```text
 기능 브랜치 push
@@ -194,14 +195,14 @@ Pull Request 자동 검사
       ↓
 개발자 검토
       ↓
-main에 merge
+develop에 merge
       ↓
 GitHub Actions 검사·빌드
       ↓
 검사가 성공하면 GitHub Pages 배포
 ```
 
-즉, 최초 Pages 활성화 후에는 개발자 관점에서 대체로 “로컬과 PR에서 검증한 코드를 `main`에 병합하면 자동 배포된다”가 맞다. 단, `Deploy to GitHub Pages`가 성공했고 실제 배포 화면도 정상인지 마지막으로 확인해야 한다.
+즉, 최초 Pages 활성화 후에는 개발자 관점에서 대체로 “로컬과 PR에서 검증한 코드를 `develop`에 병합하면 자동 배포된다”가 맞다. 단, `Deploy to GitHub Pages`가 성공했고 실제 배포 화면도 정상인지 마지막으로 확인해야 한다.
 
 ---
 
@@ -232,7 +233,7 @@ GitHub Actions의 성공은 파일이 정상적으로 만들어져 배포되었�
 
 ### Pull Request의 `Verify`가 실패하는 경우
 
-실패한 단계의 로그를 확인하고 기능 브랜치에서 수정한 뒤 다시 push한다. 검사를 우회해 `main`에 직접 push하지 않는다. `main` Ruleset의 필수 검사에 `Pull Request Checks / Verify`가 포함됐는지 확인한다.
+실패한 단계의 로그를 확인하고 기능 브랜치에서 수정한 뒤 다시 push한다. 검사를 우회해 `develop`에 직접 push하지 않는다. `develop` Ruleset의 필수 검사에 `Pull Request Checks / Verify`가 포함됐는지 확인한다.
 
 ### 로컬에서는 되지만 GitHub에서 이미지가 안 보이는 경우
 
@@ -252,7 +253,7 @@ GitHub 요금제와 조직 정책에 따라 비공개 저장소의 Pages 사용 
 
 ## 6. 문제가 있는 버전을 되돌리는 방법
 
-배포 후 치명적인 문제가 발견되면 롤백 브랜치에서 잘못된 변경을 되돌리고 긴급 Pull Request를 만든다. 필수 검사를 통과한 롤백 Pull Request를 `main`에 병합하면 같은 워크플로가 이전의 정상 코드로 다시 빌드하고 배포한다.
+배포 후 치명적인 문제가 발견되면 롤백 브랜치에서 잘못된 변경을 되돌리고 긴급 Pull Request를 만든다. 필수 검사를 통과한 롤백 Pull Request를 `develop`에 병합하면 같은 워크플로가 이전의 정상 코드로 다시 빌드하고 배포한다.
 
 ```bash
 git switch -c revert/broken-release
@@ -260,7 +261,7 @@ git revert <문제가-생긴-commit>
 git push -u origin revert/broken-release
 ```
 
-push 후 GitHub에서 `main` 대상 Pull Request를 열고 `Pull Request Checks / Verify`와 개발자 확인을 거쳐 병합한다. 긴급 상황에서도 보호 규칙을 우회해 `main`에 직접 push하지 않는다. 공유 브랜치의 이력을 강제로 바꾸는 `reset --hard`나 force push도 사용하지 않는다.
+push 후 GitHub에서 `develop` 대상 Pull Request를 열고 `Pull Request Checks / Verify`와 개발자 확인을 거쳐 병합한다. 긴급 상황에서도 보호 규칙을 우회해 `develop`에 직접 push하지 않는다. 공유 브랜치의 이력을 강제로 바꾸는 `reset --hard`나 force push도 사용하지 않는다.
 
 ---
 
@@ -269,7 +270,7 @@ push 후 GitHub에서 `main` 대상 Pull Request를 열고 `Pull Request Checks 
 ### 최초 1회
 
 - [ ] GitHub Pages의 Source를 `GitHub Actions`로 선택했다.
-- [ ] `main` Ruleset에서 Pull Request를 필수로 설정하고 직접 push를 막았다.
+- [ ] `develop` Ruleset에서 Pull Request를 필수로 설정하고 직접 push를 막았다.
 - [ ] `Pull Request Checks / Verify`를 필수 검사로 지정했다.
 - [ ] 최초 Actions의 `build`와 `deploy`가 성공했다.
 - [ ] `https://zzugguru.github.io/zzugguru/`에서 실제 게임을 확인했다.
@@ -279,7 +280,7 @@ push 후 GitHub에서 `main` 대상 Pull Request를 열고 `Pull Request Checks 
 - [ ] 하네스 검증과 개발자 최종 확인을 마쳤다.
 - [ ] 로컬 타입 검사, 테스트, 디자인 검사와 빌드가 성공했다.
 - [ ] Pull Request Checks / Verify가 성공했다.
-- [ ] Pull Request를 검토하고 `main`에 merge했다.
+- [ ] Pull Request를 검토하고 `develop`에 merge했다.
 - [ ] Deploy to GitHub Pages가 성공했다.
 - [ ] 배포 주소에서 핵심 게임 흐름을 다시 확인했다.
 

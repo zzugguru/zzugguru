@@ -113,8 +113,8 @@ Codex UI가 사용하는 스킬 이름, 짧은 설명, 기본 호출 프롬프�
 
 ### `.github/workflows/`: Pull Request 검증과 자동 배포
 
-- `pull-request-checks.yml`: `main` 대상 Pull Request에서 타입 검사, 테스트, 디자인 검사와 빌드를 실행한다. 운영 사이트는 배포하지 않는다.
-- `deploy-pages.yml`: 변경이 `main`에 병합된 뒤 같은 검증을 다시 실행하고, 성공한 `dist/`만 GitHub Pages에 배포한다.
+- `pull-request-checks.yml`: `develop` 대상 Pull Request에서 타입 검사, 테스트, 디자인 검사와 빌드를 실행한다. 운영 사이트는 배포하지 않는다.
+- `deploy-pages.yml`: 변경이 `develop`에 병합된 뒤 같은 검증을 다시 실행하고, 성공한 `dist/`만 GitHub Pages에 배포한다.
 
 개발자는 로컬에서 먼저 확인하고, GitHub의 Pull Request 검사까지 통과한 변경만 병합한다. 최초 Pages 활성화와 상세한 배포 확인 방법은 `02_Release_for_GitPage.md`에서 설명한다.
 
@@ -390,26 +390,26 @@ npm run dev
 
 ### 5.4 Pull Request 자동 검사 확인
 
-기능 브랜치를 push하고 `main`을 대상으로 Pull Request를 만든다. GitHub의 `Pull Request Checks / Verify`는 다음 검사를 자동으로 다시 실행한다.
+기능 브랜치를 push하고 `develop`을 대상으로 Pull Request를 만든다. GitHub의 `Pull Request Checks / Verify`는 다음 검사를 자동으로 다시 실행한다.
 
 ```text
 타입 검사 → 테스트 → 디자인 검사 → 빌드
 ```
 
-이 단계에서는 GitHub Pages에 배포하지 않는다. 검사 실패 원인을 기능 브랜치에서 수정하고 다시 push한다. 저장소의 `main` Ruleset에서 Pull Request와 `Pull Request Checks / Verify` 통과를 필수로 지정하고 직접 push를 막아야 한다.
+이 단계에서는 GitHub Pages에 배포하지 않는다. 검사 실패 원인을 기능 브랜치에서 수정하고 다시 push한다. 저장소의 `develop` Ruleset에서 Pull Request와 `Pull Request Checks / Verify` 통과를 필수로 지정하고 직접 push를 막아야 한다.
 
-### 5.5 `main` 병합과 자동 배포 확인
+### 5.5 `develop` 병합과 자동 배포 확인
 
-Pull Request 검사와 사람의 리뷰가 끝나면 `main`에 병합한다. 보호된 `main`에는 직접 push하지 않는다. 병합으로 `main` push가 발생하면 `Deploy to GitHub Pages`가 검증과 빌드를 다시 수행하고, 모두 성공한 경우에만 운영 사이트를 배포한다.
+Pull Request 검사와 사람의 리뷰가 끝나면 `develop`에 병합한다. 보호된 `develop`에는 직접 push하지 않는다. 병합으로 `develop` push가 발생하면 `Deploy to GitHub Pages`가 검증과 빌드를 다시 수행하고, 모두 성공한 경우에만 운영 사이트를 배포한다.
 
 ```text
 로컬 확인
     ↓
 Pull Request 검사 통과
     ↓
-개발자 리뷰와 main 병합
+개발자 리뷰와 develop 병합
     ↓
-main 재검증·빌드
+develop 재검증·빌드
     ↓
 GitHub Pages 자동 배포
 ```
@@ -560,7 +560,7 @@ npm run design:lint
 [ ] 개발자가 브라우저에서 실제 동작을 확인했다.
 [ ] 개발자가 Developer Final Check를 작성하고 상태를 ACCEPTED로 바꿨다.
 [ ] Pull Request Checks / Verify가 통과했다.
-[ ] main 병합 후 Deploy to GitHub Pages가 성공했다.
+[ ] develop 병합 후 Deploy to GitHub Pages가 성공했다.
 [ ] 배포된 사이트에서 핵심 게임 흐름을 확인했다.
 [ ] 반복 가능한 교훈만 올바른 하네스 파일에 반영했다.
 ```
