@@ -5,8 +5,8 @@ import { SPACESHIP_MAP, type PlayableMapAssetEntry } from './mapAssetManifest';
 
 export const MAP_BOUNDS: Rect = SPACESHIP_MAP.bounds;
 export const PLAYER_SIZE = 26;
-export const PLAYER_SPRITE_TOP_OVERHANG = 25;
-export const PLAYER_SPRITE_SIDE_OVERHANG = 1;
+export const PLAYER_SPRITE_TOP_OVERHANG = 42;
+export const PLAYER_SPRITE_SIDE_OVERHANG = 5;
 export const DEVICE: Rect = SPACESHIP_MAP.device!.bounds;
 export const OBSTACLES: readonly Rect[] = SPACESHIP_MAP.collisions;
 

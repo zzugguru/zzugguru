@@ -3,8 +3,9 @@ import { canActivateDevice, canInteract, clearDirections, createFlow, movePlayer
 import { MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, type PlayableMapAssetEntry } from '../shared/mapAssetManifest';
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
-import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
+import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
+import { selectEpilogueBackground } from './epilogueBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 
 type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
@@ -44,6 +45,7 @@ export class MemoryReconstructionGame {
   private readonly spaceshipImage = new Image();
   private readonly memoryRoomImage = new Image();
   private readonly playerImage = new Image();
+  private readonly quartersImage = new Image();
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
@@ -54,6 +56,7 @@ export class MemoryReconstructionGame {
     this.spaceshipImage.src = new URL('../assets/chapter03-spaceship-lab.png', import.meta.url).href;
     this.memoryRoomImage.src = new URL('../assets/chapter03-memory-room-v2.png', import.meta.url).href;
     this.playerImage.src = new URL('../../../assets/yeongsu-alien-suit-sprites.png', import.meta.url).href;
+    this.quartersImage.src = new URL('../assets/yeongsu-quarters.png', import.meta.url).href;
   }
 
   mount(): void {
@@ -231,7 +234,7 @@ export class MemoryReconstructionGame {
     if (this.screen === 'epilogue' && ['corridor', 'archive'].includes(this.epilogue.phase)) this.updateMap(delta);
     if (this.screen === 'epilogue' && this.epilogue.phase === 'silence' && time >= this.silenceUntil) {
       this.epilogue = advanceEpilogue(this.epilogue);
-      this.player = { x: 80, y: 260 };
+      this.player = { ...QUARTERS_SPAWN };
       requestAnimationFrame(() => this.controls.directions[0].focus());
     }
     if (this.screen === 'awakening' && time - this.awakeningStartedAt >= 3_600) {
@@ -249,7 +252,7 @@ export class MemoryReconstructionGame {
     this.playerFacing = facingFromMovement(dx, dy, this.playerFacing);
     if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
     this.player = this.screen === 'epilogue'
-      ? moveEpiloguePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18)
+      ? moveEpiloguePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18, this.epilogue.phase === 'corridor' ? 'corridor' : 'archive')
       : movePlayer(this.player, dx * delta * 0.18, dy * delta * 0.18, this.currentMap());
   }
 
@@ -391,13 +394,23 @@ export class MemoryReconstructionGame {
   private drawEpilogue(): void {
     const ctx = this.context; const phase = this.epilogue.phase;
     ctx.fillStyle = '#111827'; ctx.fillRect(26, 22, 908, 496); ctx.textAlign = 'center';
+    const quartersBackground = selectEpilogueBackground(phase, this.quartersImage);
+    const quartersReady = quartersBackground !== null && drawMemoryRoomBackground(ctx, quartersBackground);
     if (phase === 'silence') {
-      ctx.fillStyle = '#374151'; ctx.font = '16px system-ui'; ctx.fillText('빈 연구실 · 우주선의 낮은 진동만 들린다.', 480, 290); return;
+      if (!quartersReady) { ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); }
+      ctx.fillStyle = 'rgba(3,7,18,.82)'; ctx.fillRect(170, 445, 620, 48);
+      ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui';
+      ctx.fillText('영수의 작은 방 · 우주선의 낮은 진동만 들린다.', 480, 475); return;
     }
     if (phase === 'corridor') {
-      ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); ctx.strokeStyle = '#374151';
-      for (let x = 48; x < 912; x += 48) ctx.strokeRect(x, 90, 48, 400);
-      ctx.fillStyle = '#312e81'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
+      if (!quartersReady) {
+        ctx.fillStyle = '#1f2937'; ctx.fillRect(48, 90, 864, 400); ctx.strokeStyle = '#374151';
+        for (let x = 48; x < 912; x += 48) ctx.strokeRect(x, 90, 48, 400);
+        ctx.fillStyle = '#312e81'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
+      } else {
+        ctx.fillStyle = 'rgba(49,46,129,.2)'; ctx.fillRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
+        ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.strokeRect(ARCHIVE_DOOR.x - 34, ARCHIVE_DOOR.y - 50, 68, 100);
+      }
       ctx.fillStyle = '#f9fafb'; ctx.font = '13px system-ui'; ctx.fillText('기록 보관소', ARCHIVE_DOOR.x, ARCHIVE_DOOR.y + 5);
       this.drawPlayer();
       ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui'; ctx.fillText(this.epilogue.message, 480, 55); return;

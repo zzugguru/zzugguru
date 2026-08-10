@@ -17,7 +17,7 @@ describe('Chapter03 player sprite', () => {
     const image = { complete: true, naturalWidth: 256, naturalHeight: 80 } as HTMLImageElement;
 
     expect(drawPlayerSprite(context, image, { x: 80, y: 250 }, 'right')).toBe(true);
-    expect([PLAYER_SPRITE_DISPLAY_WIDTH, PLAYER_SPRITE_DISPLAY_HEIGHT]).toEqual([48, 60]);
+    expect([PLAYER_SPRITE_DISPLAY_WIDTH, PLAYER_SPRITE_DISPLAY_HEIGHT]).toEqual([64, 80]);
     expect(context.imageSmoothingEnabled).toBe(false);
     expect(drawImage).toHaveBeenCalledWith(
       image,
@@ -25,15 +25,15 @@ describe('Chapter03 player sprite', () => {
       0,
       PLAYER_SPRITE_FRAME_WIDTH,
       PLAYER_SPRITE_FRAME_HEIGHT,
-      69,
-      219,
+      61,
+      200,
       PLAYER_SPRITE_DISPLAY_WIDTH,
       PLAYER_SPRITE_DISPLAY_HEIGHT,
     );
-    expect(PLAYER_SPRITE_DISPLAY_TOP_PADDING).toBe(6);
-    expect(PLAYER_SPRITE_DISPLAY_BOTTOM_PADDING).toBe(3);
-    expect(250 - (219 + PLAYER_SPRITE_DISPLAY_TOP_PADDING)).toBe(PLAYER_SPRITE_TOP_OVERHANG);
-    expect(219 + PLAYER_SPRITE_DISPLAY_HEIGHT - PLAYER_SPRITE_DISPLAY_BOTTOM_PADDING).toBe(250 + 26);
+    expect(PLAYER_SPRITE_DISPLAY_TOP_PADDING).toBe(8);
+    expect(PLAYER_SPRITE_DISPLAY_BOTTOM_PADDING).toBe(4);
+    expect(250 - (200 + PLAYER_SPRITE_DISPLAY_TOP_PADDING)).toBe(PLAYER_SPRITE_TOP_OVERHANG);
+    expect(200 + PLAYER_SPRITE_DISPLAY_HEIGHT - PLAYER_SPRITE_DISPLAY_BOTTOM_PADDING).toBe(250 + 26);
   });
 
   it.each<[PlayerFacing, number]>([
