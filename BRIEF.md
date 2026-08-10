@@ -6,64 +6,44 @@
 
 `READY_FOR_DEVELOPER_CHECK`
 
-상태 흐름: `DRAFT` → `READY` → `IN_PROGRESS` → `REVIEW` → `ACCEPTED`
-
 ## Developer Request
-
-> 개발자 소유 영역입니다. 에이전트는 명시적인 요청 없이 수정하거나 삭제하지 않습니다.
 
 ### Task
 
-Chapter 1 일반 경비복 탑뷰 영수와 인터랙티브 스토리 연출
+Chapter 3 하단 마우스 이동·상호작용 인터페이스 제거
 
 ### Goal
 
-`src/assets/yeongsu-alien-suit-sprites.png`의 4방향 프레임 구조와 김영수의 정체성을 기준으로 일반 경비원 복장의 Chapter 1 전용 스프라이트를 만들고, Chapter 2·3의 탑뷰 쯔꾸르식 공간 연출을 Chapter 1 스토리에 섞는다. 기존 흰 화면 구간은 리듬 입력 없이 이동과 상호작용에 반응하는 짧은 시퀀스로 바꾼다.
-
-### Context
-
-- 관련 기능: `src/features/chapter1/`
-- 프레임·체형 기준: `src/assets/yeongsu-alien-suit-sprites.png` (256×80, 64×80 프레임 4개)
-- 외형 기준: `src/assets/yeongsu-guard.png`
-- 참고 구현: `src/features/chapter2/client/MapScene.ts`, `src/features/chapter2/client/playerSprite.ts`, `src/features/chapter3/client/MemoryReconstructionGame.ts`, `src/features/chapter3/client/playerSprite.ts`
-- 현재 Chapter 1 스토리는 대부분 정지 배경과 대사 패널로 진행되며 whiteout 3개 비트도 단순한 광원 배경이다.
+Chapter 3 게임 하단에 표시되는 방향 버튼과 상호작용 버튼을 제거해 Canvas와 키보드 중심 인터페이스로 단순화한다.
 
 ### Included Scope
 
-- 기존 256×80 4방향 레이아웃을 보존한 일반 경비복 영수 스프라이트 생성
-- Chapter 1 전용 결과물은 `src/features/chapter1/assets/`에 보관
-- 주요 장면 사이에 2~3개의 짧은 탑뷰 탐색·상호작용 구간 삽입
-- 경비실·CCTV·지하 계단실 장면에 탑뷰 맵 합성, 영수 방향 프레임, 오브젝트 강조와 공간 연출 적용
-- whiteout 구간에 이동 입력과 상호작용으로 진행되는 비리듬형 저항 시퀀스 적용
-- 키보드와 화면 포인터 입력, live region 안내, 로딩 fallback 유지
-- 스프라이트 실제 포맷·크기·프레임별 알파 경계, 표시 배율·발 기준선·이동 극값·상호작용 도달성 테스트
-- 브라우저에서 대표 탑뷰 장면과 whiteout 상호작용 시각·동작 확인
+- 하단 `▲ ◀ ▼ ▶` 방향 버튼 제거
+- 하단 상황별 상호작용 버튼 제거
+- 관련 pointer 및 click 이벤트 연결과 UI 상태 업데이트 제거
+- 맵·개인실 복도·기록 보관소 진입 시 Canvas로 포커스 이동
+- 안내 문구를 키보드 입력 기준으로 수정
 
 ### Excluded Scope
 
-- `src/assets/yeongsu-alien-suit-sprites.png` 공통 원본 덮어쓰기
-- Chapter 2·3 코드·에셋·게임 흐름 변경
-- Chapter 1 대사 내용과 옥상 탈출 규칙 변경
-- 리듬 게임 복원, 전투, 인벤토리, 분기 엔딩 추가
-- 음원 편집·재작곡
+- 방향키/WASD, E/Enter 키보드 입력 변경
+- Canvas 클릭으로 대사·장면 진행하는 기존 동작 변경
+- 가족 선택, 놓아주기 선택, 다음, 재시도, 복귀 버튼 제거
+- 게임 로직, 에셋, 좌표와 장면 흐름 변경
 
 ### Constraints
 
-- 관련 `AGENTS.md`, `DESIGN.md`, `src/assets/README.md` 규칙을 따른다.
-- 일반 경비복은 짙은 남색 모자·재킷·바지와 검은 신발로 통일하고, 기존 노년 체형·회색 머리·4방향 포즈를 유지한다.
-- 각 프레임은 64×80 셀에 들어가며 투명 배경, 보이는 발 기준선과 정수 배율을 사용한다.
-- 탑뷰 구간은 짧고 목표가 명확해야 하며 기존 클릭·Z·Enter 스토리 진행을 불필요하게 막지 않는다.
-- whiteout 인터랙션은 리듬 타이밍을 요구하지 않고 방향 이동과 한 번의 상호작용만 사용한다.
-- 대사 패널과 HUD 가독성, 로딩 실패 fallback, 기존 스토리→추격→옥상 흐름을 보존한다.
+- `AGENTS.md`, `DESIGN.md`, `$two-agent-harness`를 따른다.
+- 키보드 사용자가 맵 진입 시 즉시 조작할 수 있도록 Canvas 포커스를 유지한다.
+- 다른 챕터 UI와 Chapter 3의 비이동 선택 버튼은 유지한다.
 
 ### Done When
 
-- [ ] Chapter 1 전용 일반 경비복 영수 시트가 256×80 RGBA와 4×64×80 레이아웃을 만족한다.
-- [ ] 경비실·CCTV·지하 계단실의 대표 비트가 탑뷰 맵과 방향성 영수 스프라이트를 합성한다.
-- [ ] 최소 2개의 짧은 탐색 목표가 이동·포인터·상호작용으로 완료되고 다음 스토리 비트로 이어진다.
-- [ ] whiteout는 이동에 시각적으로 반응하고 목표 도달 후 Z·Enter·클릭으로 완료된다.
-- [ ] 대사 내용, fallback, 스토리→추격→옥상 흐름이 유지된다.
-- [ ] 에셋·렌더 좌표·상호작용 경계 테스트, 브라우저 확인, 필수 프로젝트 검사와 독립 리뷰가 완료된다.
+- [ ] DOM과 CSS에서 `.map-controls`, 방향 버튼, 상호작용 버튼이 제거된다.
+- [ ] `MemoryReconstructionGame`이 해당 요소 없이 생성·실행된다.
+- [ ] 방향키/WASD, E/Enter와 기존 진행 버튼이 유지된다.
+- [ ] 맵·복도·보관소 전환 시 Canvas가 포커스를 받는다.
+- [ ] 필수 검사와 Terra 독립 리뷰가 완료된다.
 
 ## Agent Understanding
 
@@ -79,10 +59,8 @@ Chapter 1 일반 경비복 탑뷰 영수와 인터랙티브 스토리 연출
 
 ## Developer Decisions
 
-> 개발자 소유 영역입니다. 에이전트는 명시적인 요청 없이 수정하거나 삭제하지 않습니다.
-
-- 2026-08-10: 로직 작업은 `BRIEF.md`, 에셋 작업은 `BRIEF_ASSET.md`를 사용하며 별도 세션의 메인 에이전트가 각각 오케스트레이션한다.
-- 2026-08-10: 각 세션은 자체 구현 에이전트와 Terra 검증 에이전트로 two-agent harness를 수행하고 상대 brief 및 담당 파일을 수정하지 않는다.
+- 2026-08-10: 로직 작업은 `BRIEF.md`, 에셋 작업은 `BRIEF_ASSET.md`를 사용하며 별도 세션에서 진행한다.
+- 2026-08-10: Chapter 3 하단 방향·상호작용 버튼은 제거하되 키보드와 나머지 진행 버튼은 유지한다.
 
 ## Agent Result
 
@@ -97,8 +75,6 @@ Chapter 1 스토리의 반응형 표시, 01번 배경, 탐색 충돌, 41·42번 
 최종 검사는 `npm run typecheck`, `npm run test`(50개 파일·238개 테스트), `npm run build`, `npm run design:lint`, `git diff --check`가 통과했다. 디자인 린트에는 기존 미사용 `border`·`shadow` 경고 2건만 남았다. 독립 리뷰는 처음에 2px 충돌 통로 때문에 60Hz 키보드가 막힐 수 있는 P1과 노이즈가 대사 패널을 덮는 P2를 발견했다. 캐비닛 충돌을 실제 시각 경계에 맞춰 통로 중심 폭 44px로 넓히고, 60Hz 키보드 경로 및 노이즈 경계·렌더 순서 테스트를 추가했다. 같은 리뷰어의 재검증에서 두 건 모두 해결됐으며 새 발견은 없었다. 남은 위험은 인앱 백그라운드 탭에서 연속 애니메이션 프레임이 진행되지 않아 41·42번의 장시간 실제 화면 품질은 자동 렌더러 검증으로만 확인했다는 점이다.
 
 ## Developer Final Check
-
-> 개발자 소유 영역입니다. 실제 동작과 변경사항을 확인한 뒤 결과를 기록하고 상태를 `ACCEPTED`로 변경합니다.
 
 
 

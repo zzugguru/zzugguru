@@ -4,18 +4,24 @@ import { MEMORY_ROOM_MAP, requirePlayableMap, SPACESHIP_MAP, type PlayableMapAss
 import { collectNearby, collectionAvailable, createCollection, MEMORY_OBJECTS, nearbyMemoryObject, type CollectionState } from '../shared/collectionLogic';
 import { chooseLettingGo, createLettingGo, LETTING_GO_MEMORIES, type LettingGoChoice, type LettingGoState } from '../shared/lettingGoLogic';
 import { advanceEpilogue, ARCHIVE_DOOR, ARCHIVE_RECORDS, ARCHIVE_ROOM_DOOR, ARCHIVE_SPAWN, createEpilogue, enterArchive, JOURNAL_LINES, MONTAGE, moveEpiloguePlayer, nearArchiveDoor, nearbyArchiveRecord, placeArchiveRecord, QUARTERS_SPAWN, startEpilogue, type EpilogueState } from '../shared/epilogueLogic';
+import { advanceWarning, createWarning, WARNING_LINES, type WarningState } from '../shared/wardenWarningLogic';
+import { advanceBlackout, BLACKOUT_LINES, createBlackout, type BlackoutState } from '../shared/blackoutLogic';
+import {
+  advanceRescueDialogue, completeRescue, createRescue, nearbyRescueTarget, rescueAvailable,
+  RESCUE_COMPLETE_LINE, RESCUE_TARGETS, startRescueDialogue, type RescueDialogueState, type RescueState, type RescueTargetId,
+} from '../shared/rescueLogic';
+import { advanceDinner, createDinner, DINNER_CRACK_STEP, DINNER_LINES, type DinnerState } from '../shared/dinnerIllusionLogic';
+import { renderDialogueBox } from '../shared/dialogueBox';
 import { drawMemoryRoomBackground, selectChapter03Background } from './memoryRoomBackground';
 import { selectEpilogueBackground } from './epilogueBackground';
 import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playerSprite';
 import { drawInteractionObject, type InteractionObjectAsset } from './interactionObjectSprite';
 import { drawFamilyNpcSprite, familyNpcAssetPath, familyNpcDestination } from './familyNpcSprite';
+import { alienFamilyAssetPath, alienFamilyDestination, drawAlienFamilyNpc } from './alienFamilyNpcSprite';
 
-type Screen = 'map' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
+type Screen = 'map' | 'warning' | 'blackout' | 'rescue' | 'dinner' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
 type Controls = {
-  map: HTMLElement;
-  directions: readonly HTMLButtonElement[];
-  interact: HTMLButtonElement;
   choices: HTMLElement;
   choiceButtons: readonly HTMLButtonElement[];
   returnButton: HTMLButtonElement;
@@ -40,6 +46,17 @@ export class MemoryReconstructionGame {
   private collection: CollectionState = createCollection();
   private lettingGo: LettingGoState = createLettingGo();
   private epilogue: EpilogueState = createEpilogue();
+  private warning: WarningState = createWarning();
+  private warningFadeStartedAt = 0;
+  private blackout: BlackoutState = createBlackout();
+  private blackoutFadeStartedAt = 0;
+  private rescue: RescueState = createRescue();
+  private rescueDialogue: RescueDialogueState | null = null;
+  private rescueReleaseStartedAt = 0;
+  private rescueOutro: 'none' | 'line' | 'fade' = 'none';
+  private rescueFadeStartedAt = 0;
+  private dinner: DinnerState = createDinner();
+  private dinnerFadeStartedAt = 0;
   private silenceUntil = 0;
   private awakeningStartedAt = 0;
   private previousTime = performance.now();
@@ -55,6 +72,11 @@ export class MemoryReconstructionGame {
     son: new Image(),
     daughter: new Image(),
   };
+  private readonly alienFamilyImages: Readonly<Record<RescueTargetId, HTMLImageElement>> = {
+    father: new Image(),
+    mother: new Image(),
+    sister: new Image(),
+  };
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
@@ -69,6 +91,7 @@ export class MemoryReconstructionGame {
     this.archiveImage.src = new URL('../assets/chapter03-archive.png', import.meta.url).href;
     this.objectImage.src = new URL('../assets/interaction-objects.png', import.meta.url).href;
     for (const family of FAMILY) this.familyImages[family.id].src = familyNpcAssetPath(family.id);
+    for (const target of RESCUE_TARGETS) this.alienFamilyImages[target.id].src = alienFamilyAssetPath(target.id);
   }
 
   mount(): void {
@@ -77,22 +100,15 @@ export class MemoryReconstructionGame {
     window.addEventListener('blur', this.clearMovement);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.canvas.addEventListener('click', this.onCanvasClick);
-    this.controls.directions.forEach((button) => {
-      const direction = button.dataset.direction as Direction;
-      const start = (event: Event) => { event.preventDefault(); this.pressed.add(direction); };
-      const stop = () => this.pressed.delete(direction);
-      button.addEventListener('pointerdown', start);
-      button.addEventListener('pointerup', stop);
-      button.addEventListener('pointercancel', stop);
-      button.addEventListener('pointerleave', stop);
-    });
-    this.controls.interact.addEventListener('click', this.interact);
     this.controls.returnButton.addEventListener('click', this.returnToMap);
     this.controls.retryButton.addEventListener('click', this.retryPuzzle);
     this.controls.lettingButtons.forEach((button) => button.addEventListener('click', () => {
       if (this.screen === 'letting-go') this.chooseLettingGo(button.dataset.choice as LettingGoChoice);
     }));
-    this.controls.epilogueNext.addEventListener('click', this.advanceEpilogue);
+    this.controls.epilogueNext.addEventListener('click', () => {
+      if (this.screen === 'warning' || this.screen === 'blackout' || this.screen === 'rescue' || this.screen === 'dinner') this.interact();
+      else this.advanceEpilogue();
+    });
     this.controls.choiceButtons.forEach((button, index) => button.addEventListener('click', () => {
       if (this.screen === 'playing') this.choose(FAMILY[index].id);
     }));
@@ -107,6 +123,18 @@ export class MemoryReconstructionGame {
       return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'map') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'warning') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'blackout') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'rescue') {
+      event.preventDefault(); this.interact(); return;
+    }
+    if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'dinner') {
       event.preventDefault(); this.interact(); return;
     }
     if ((event.code === 'Enter' || event.code === 'KeyE') && this.screen === 'epilogue') {
@@ -150,14 +178,67 @@ export class MemoryReconstructionGame {
       else if (this.epilogue.phase === 'archive') this.placeArchiveRecord();
       return;
     }
-    if (this.screen === 'map' && collectionAvailable(this.flow)) {
+    if (this.screen === 'warning') {
+      const wasSeen = this.warning.seen;
+      this.warning = advanceWarning(this.warning);
+      if (!wasSeen && this.warning.seen) this.warningFadeStartedAt = performance.now();
+      return;
+    }
+    if (this.screen === 'blackout') {
+      const wasSeen = this.blackout.seen;
+      this.blackout = advanceBlackout(this.blackout);
+      if (!wasSeen && this.blackout.seen) this.blackoutFadeStartedAt = performance.now();
+      return;
+    }
+    if (this.screen === 'dinner') {
+      const wasSeen = this.dinner.seen;
+      this.dinner = advanceDinner(this.dinner);
+      if (!wasSeen && this.dinner.seen) this.dinnerFadeStartedAt = performance.now();
+      return;
+    }
+    if (this.screen === 'rescue' && this.rescueOutro === 'line') {
+      this.rescueOutro = 'fade';
+      this.rescueFadeStartedAt = performance.now();
+      return;
+    }
+    if (this.screen === 'rescue' && this.rescueDialogue) {
+      const target = RESCUE_TARGETS.find((candidate) => candidate.id === this.rescueDialogue!.targetId)!;
+      const wasSeen = this.rescueDialogue.seen;
+      this.rescueDialogue = advanceRescueDialogue(this.rescueDialogue, target);
+      if (!wasSeen && this.rescueDialogue.seen) {
+        this.rescue = completeRescue(this.rescue, target.id);
+        this.rescueReleaseStartedAt = performance.now();
+      }
+      return;
+    }
+    if (this.screen === 'map' && collectionAvailable(this.flow) && !this.collection.completed) {
       const next = collectNearby(this.collection, this.player);
       this.collection = next;
-      if (next.completed) {
-        this.lettingGo = createLettingGo();
-        this.screen = 'letting-go';
-        requestAnimationFrame(() => this.controls.lettingButtons[0].focus());
+      if (next.completed && !this.blackout.seen) {
+        // 비트2: letting-go로 곧장 보내는 대신 정전·변모 컷씬(blackout)을 먼저 거친다.
+        // `!this.blackout.seen`은 바깥 `!this.collection.completed` 가드로 인해 현재는 항상 참이지만,
+        // "blackout을 이미 봤다면 다시 시작하지 않는다"는 불변조건을 명시적으로 남겨둔다.
+        this.blackout = createBlackout();
+        this.screen = 'blackout';
+        this.clearMovement();
+        requestAnimationFrame(() => this.controls.epilogueNext.focus());
       }
+      return;
+    }
+    if (this.screen === 'map' && rescueAvailable(this.blackout.seen, this.rescue)) {
+      const target = nearbyRescueTarget(this.player, this.rescue);
+      if (target) {
+        this.rescueDialogue = startRescueDialogue(target);
+        this.screen = 'rescue';
+        this.clearMovement();
+        requestAnimationFrame(() => this.controls.epilogueNext.focus());
+      }
+      return;
+    }
+    if (this.screen === 'map' && !this.warning.seen && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap())) {
+      this.screen = 'warning';
+      this.clearMovement();
+      requestAnimationFrame(() => this.controls.epilogueNext.focus());
       return;
     }
     const next = transitionFlow(this.flow, { type: 'interact', allowed: canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap()) });
@@ -174,7 +255,7 @@ export class MemoryReconstructionGame {
     this.flow = transitionFlow(this.flow, { type: 'return-to-map' });
     this.screen = 'map';
     this.player = { ...(this.flow.deviceComplete ? MEMORY_ROOM_MAP.spawn : SPACESHIP_MAP.spawn) };
-    requestAnimationFrame(() => this.controls.directions[0].focus());
+    requestAnimationFrame(() => this.canvas.focus());
   };
 
   private readonly retryPuzzle = (): void => {
@@ -189,6 +270,10 @@ export class MemoryReconstructionGame {
     if (this.screen === 'epilogue' && this.epilogue.phase !== 'archive' && this.epilogue.phase !== 'silence') {
       this.advanceEpilogue(); return;
     }
+    if (this.screen === 'warning') { this.interact(); return; }
+    if (this.screen === 'blackout') { this.interact(); return; }
+    if (this.screen === 'rescue') { this.interact(); return; }
+    if (this.screen === 'dinner') { this.interact(); return; }
     if (this.screen !== 'playing') return;
     const bounds = this.canvas.getBoundingClientRect();
     const family = familyAtPoint(
@@ -237,6 +322,7 @@ export class MemoryReconstructionGame {
     if (next === this.epilogue) return;
     this.epilogue = next;
     this.player = { ...ARCHIVE_SPAWN };
+    requestAnimationFrame(() => this.canvas.focus());
   }
 
   private readonly loop = (time: number): void => {
@@ -247,7 +333,39 @@ export class MemoryReconstructionGame {
     if (this.screen === 'epilogue' && this.epilogue.phase === 'silence' && time >= this.silenceUntil) {
       this.epilogue = advanceEpilogue(this.epilogue);
       this.player = { ...QUARTERS_SPAWN };
-      requestAnimationFrame(() => this.controls.directions[0].focus());
+      requestAnimationFrame(() => this.canvas.focus());
+    }
+    if (this.screen === 'warning' && this.warning.seen && time - this.warningFadeStartedAt >= 420) {
+      this.screen = 'map';
+      this.interact();
+    }
+    if (this.screen === 'blackout' && this.blackout.seen && time - this.blackoutFadeStartedAt >= 420) {
+      // 비트3: 정전 연출이 끝나면 letting-go로 곧장 가지 않고 구출 단계(map 화면)로 돌아간다.
+      this.screen = 'map';
+      this.player = { ...SPACESHIP_MAP.spawn };
+      requestAnimationFrame(() => this.canvas.focus());
+    }
+    if (this.screen === 'rescue' && this.rescueDialogue?.seen && this.rescueOutro === 'none' && time - this.rescueReleaseStartedAt >= 400) {
+      if (this.rescue.completed) {
+        this.rescueOutro = 'line';
+        this.rescueDialogue = null;
+        requestAnimationFrame(() => this.controls.epilogueNext.focus());
+      } else {
+        this.screen = 'map';
+        this.rescueDialogue = null;
+        requestAnimationFrame(() => this.canvas.focus());
+      }
+    }
+    if (this.screen === 'rescue' && this.rescueOutro === 'fade' && time - this.rescueFadeStartedAt >= 420) {
+      // 비트4: 구출 완료 페이드가 끝나면 letting-go로 곧장 가지 않고 마지막 저녁식탁 환상 인식 장면(dinner)을 먼저 거친다.
+      this.dinner = createDinner();
+      this.screen = 'dinner';
+      requestAnimationFrame(() => this.controls.epilogueNext.focus());
+    }
+    if (this.screen === 'dinner' && this.dinner.seen && time - this.dinnerFadeStartedAt >= 420) {
+      this.lettingGo = createLettingGo();
+      this.screen = 'letting-go';
+      requestAnimationFrame(() => this.controls.lettingButtons[0].focus());
     }
     if (this.screen === 'awakening' && time - this.awakeningStartedAt >= 3_600) {
       this.flow = transitionFlow(this.flow, { type: 'puzzle-success' });
@@ -271,6 +389,10 @@ export class MemoryReconstructionGame {
   private render(): void {
     this.context.fillStyle = '#030712'; this.context.fillRect(0, 0, 960, 540);
     if (this.screen === 'map') this.drawMap();
+    else if (this.screen === 'warning') this.drawWarning();
+    else if (this.screen === 'blackout') this.drawBlackout();
+    else if (this.screen === 'rescue') this.drawRescue();
+    else if (this.screen === 'dinner') this.drawDinner();
     else if (this.screen === 'playing') this.drawPuzzle();
     else if (this.screen === 'awakening') this.drawAwakening();
     else if (this.screen === 'letting-go') this.drawLettingGo();
@@ -282,7 +404,7 @@ export class MemoryReconstructionGame {
   private drawMap(): void {
     const ctx = this.context;
     const map = this.currentMap();
-    const background = selectChapter03Background(this.flow.deviceComplete, this.spaceshipImage, this.memoryRoomImage);
+    const background = map.id === SPACESHIP_MAP.id ? this.spaceshipImage : this.memoryRoomImage;
     if (!drawMemoryRoomBackground(ctx, background)) {
       ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
       ctx.strokeStyle = '#374151';
@@ -301,7 +423,8 @@ export class MemoryReconstructionGame {
       }, { width: 150, height: 150 }, this.flow.deviceComplete);
       if (!drawn) { ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height); }
     }
-    if (collectionAvailable(this.flow)) this.drawMemoryArea();
+    if (collectionAvailable(this.flow) && !rescueAvailable(this.blackout.seen, this.rescue)) this.drawMemoryArea();
+    if (rescueAvailable(this.blackout.seen, this.rescue)) this.drawRescueTargets();
     ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
     this.drawPlayer();
     if (canInteract(this.player, map) && !this.flow.deviceComplete) {
@@ -388,6 +511,137 @@ export class MemoryReconstructionGame {
     ctx.fillStyle = '#f9fafb'; ctx.font = '700 38px system-ui'; ctx.fillText(success ? '세 개의 생체 용기가 열렸다' : '기억 연결이 붕괴했다', 480, 174);
     ctx.fillStyle = '#c7d2fe'; ctx.font = '19px system-ui'; ctx.fillText(success ? '가족은 영수의 기억으로 재구성된 존재였다.' : '장치로 돌아가 다시 시도할 수 있습니다.', 480, 250);
     ctx.font = '16px system-ui'; ctx.fillText('아래 버튼을 눌러 연구 구역으로 돌아가세요.', 480, 310);
+  }
+
+  private drawWarning(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = selectChapter03Background(false, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+      ctx.lineWidth = 8; ctx.strokeStyle = '#312e81'; ctx.strokeRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    if (map.device) {
+      const device = map.device.bounds;
+      ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 3; ctx.strokeRect(device.x, device.y, device.width, device.height);
+    }
+    ctx.fillStyle = '#c7d2fe'; ctx.font = '14px system-ui'; ctx.textAlign = 'left'; ctx.fillText('출입 금지 연구 구역 · 영수', 56, 48);
+    this.drawPlayer();
+
+    renderDialogueBox(ctx, this.canvas, WARNING_LINES[this.warning.step], 'E · Enter ▶ 다음');
+
+    if (this.warning.seen) {
+      const alpha = Math.min(1, (performance.now() - this.warningFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+  }
+
+  private drawBlackout(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = selectChapter03Background(true, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    this.drawPlayer();
+
+    const dimAlpha = 0.15 + Math.min(this.blackout.step, BLACKOUT_LINES.length - 1) * 0.12;
+    ctx.fillStyle = `rgba(3,7,18,${dimAlpha})`; ctx.fillRect(0, 0, 960, 540);
+
+    renderDialogueBox(ctx, this.canvas, BLACKOUT_LINES[this.blackout.step], 'E · Enter ▶ 다음');
+
+    if (this.blackout.seen) {
+      const alpha = Math.min(1, (performance.now() - this.blackoutFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+  }
+
+  /** 구출한 인원이 늘수록 우주선이 안정을 되찾는 것을 배경 밝기로 보여준다. */
+  private rescueDimAlpha(): number {
+    return Math.max(0.2, 0.5 - this.rescue.rescued.length * 0.15);
+  }
+
+  private drawRescueTargets(): void {
+    const ctx = this.context;
+    ctx.fillStyle = `rgba(3,7,18,${this.rescueDimAlpha()})`; ctx.fillRect(0, 0, 960, 540);
+    for (const target of RESCUE_TARGETS) {
+      if (this.rescue.rescued.includes(target.id)) continue;
+      const drawn = drawAlienFamilyNpc(ctx, this.alienFamilyImages[target.id], target);
+      if (!drawn) {
+        ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(target.x, target.y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.strokeRect(target.x - 16, target.y - 16, 32, 32);
+      }
+      const destination = alienFamilyDestination(target);
+      ctx.fillStyle = '#f9fafb'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(target.name, target.x, destination.y - 7);
+    }
+    ctx.fillStyle = '#111827'; ctx.fillRect(56, 86, 260, 40);
+    ctx.fillStyle = '#f9fafb'; ctx.font = '700 16px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText(`가족 구출 ${this.rescue.rescued.length} / ${RESCUE_TARGETS.length}`, 72, 112);
+    const nearby = nearbyRescueTarget(this.player, this.rescue);
+    if (nearby) {
+      ctx.fillStyle = '#312e81'; ctx.fillRect(300, 448, 360, 42);
+      ctx.fillStyle = '#f9fafb'; ctx.textAlign = 'center'; ctx.font = '700 16px system-ui'; ctx.fillText(`E 또는 ENTER · ${nearby.name} 구출`, 480, 475);
+    }
+  }
+
+  private drawRescue(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = this.spaceshipImage;
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    if (this.rescueDialogue) {
+      const target = RESCUE_TARGETS.find((candidate) => candidate.id === this.rescueDialogue!.targetId)!;
+      if (!drawAlienFamilyNpc(ctx, this.alienFamilyImages[target.id], target)) {
+        ctx.fillStyle = '#c7d2fe'; ctx.beginPath(); ctx.arc(target.x, target.y, 12, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    this.drawPlayer();
+    ctx.fillStyle = `rgba(3,7,18,${this.rescueDimAlpha()})`; ctx.fillRect(0, 0, 960, 540);
+
+    if (this.rescueDialogue) {
+      const target = RESCUE_TARGETS.find((candidate) => candidate.id === this.rescueDialogue!.targetId)!;
+      renderDialogueBox(ctx, this.canvas, target.lines[this.rescueDialogue.step], 'E · Enter ▶ 다음');
+      if (this.rescueDialogue.seen) {
+        // 대사가 끝난 인물이 빛으로 풀려나는 짧은 이펙트. 대화창(하단 396~516px)에 가려지지 않도록
+        // 목표물의 맵 좌표가 아니라 대화창 위쪽의 고정 위치에 그린다.
+        const released = Math.min(1, (performance.now() - this.rescueReleaseStartedAt) / 400);
+        ctx.strokeStyle = `rgba(199,210,254,${1 - released})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(480, 250, 14 + released * 60, 0, Math.PI * 2); ctx.stroke();
+      }
+    } else if (this.rescueOutro !== 'none') {
+      renderDialogueBox(ctx, this.canvas, RESCUE_COMPLETE_LINE, this.rescueOutro === 'line' ? 'E · Enter ▶ 다음' : '');
+    }
+
+    if (this.rescueOutro === 'fade') {
+      const alpha = Math.min(1, (performance.now() - this.rescueFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+  }
+
+  private drawDinner(): void {
+    const ctx = this.context;
+    const map = this.currentMap();
+    const background = selectChapter03Background(true, this.spaceshipImage, this.memoryRoomImage);
+    if (!drawMemoryRoomBackground(ctx, background)) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    }
+    this.drawPlayer();
+
+    if (this.dinner.step >= DINNER_CRACK_STEP) {
+      // 거짓 식탁이 깨지기 시작하는 균열 연출 — DESIGN.md의 기존 danger 토큰(#fb7185) 재사용, 새 배경 없음.
+      const crackAlpha = Math.min(0.45, (this.dinner.step - DINNER_CRACK_STEP + 1) * 0.12);
+      ctx.fillStyle = `rgba(251,113,133,${crackAlpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
+
+    renderDialogueBox(ctx, this.canvas, DINNER_LINES[this.dinner.step], 'E · Enter ▶ 다음');
+
+    if (this.dinner.seen) {
+      const alpha = Math.min(1, (performance.now() - this.dinnerFadeStartedAt) / 420);
+      ctx.fillStyle = `rgba(3,7,18,${alpha})`; ctx.fillRect(0, 0, 960, 540);
+    }
   }
 
   private drawLettingGo(): void {
@@ -489,29 +743,57 @@ export class MemoryReconstructionGame {
   }
 
   private syncControls(): void {
-    this.controls.map.hidden = this.screen !== 'map' && !(this.screen === 'epilogue' && ['corridor', 'archive'].includes(this.epilogue.phase));
     this.controls.choices.hidden = this.screen !== 'playing';
     this.controls.returnButton.hidden = this.screen !== 'result';
     this.controls.retryButton.hidden = this.screen !== 'result' || this.state.status !== 'failure';
     this.controls.lettingChoices.hidden = this.screen !== 'letting-go' || this.lettingGo.completed;
     const epilogueCanAdvance = this.screen === 'epilogue' && !['silence', 'corridor', 'archive', 'complete'].includes(this.epilogue.phase);
-    this.controls.epilogueNext.hidden = !epilogueCanAdvance;
-    const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap());
-    const nearObject = this.screen === 'map' && collectionAvailable(this.flow) && nearbyMemoryObject(this.player, this.collection) !== null;
-    const nearRecord = this.screen === 'epilogue' && nearbyArchiveRecord(this.player, this.epilogue) !== null;
-    const nearDoor = this.screen === 'epilogue' && this.epilogue.phase === 'corridor' && nearArchiveDoor(this.player);
-    this.controls.interact.disabled = !nearDevice && !nearObject && !nearRecord && !nearDoor;
-    this.controls.interact.textContent = nearDoor ? '기록 보관소 입장 · E' : nearRecord ? '기록 배치 · E' : nearObject ? '추억 정리 · E' : '장치 작동 · E';
+    const warningCanAdvance = this.screen === 'warning' && !this.warning.seen;
+    const blackoutCanAdvance = this.screen === 'blackout' && !this.blackout.seen;
+    const rescueCanAdvance = this.screen === 'rescue'
+      && ((!!this.rescueDialogue && !this.rescueDialogue.seen) || this.rescueOutro === 'line');
+    const dinnerCanAdvance = this.screen === 'dinner' && !this.dinner.seen;
+    this.controls.epilogueNext.hidden = !epilogueCanAdvance && !warningCanAdvance && !blackoutCanAdvance && !rescueCanAdvance && !dinnerCanAdvance;
     this.controls.choiceButtons.forEach((button) => { button.disabled = this.screen !== 'playing'; });
     this.controls.lettingButtons.forEach((button) => { button.disabled = this.screen !== 'letting-go' || this.lettingGo.completed; });
+    const nearDevice = this.screen === 'map' && canActivateDevice(this.player, this.flow.deviceComplete, this.currentMap());
+    const nearObject = this.screen === 'map' && collectionAvailable(this.flow) && nearbyMemoryObject(this.player, this.collection) !== null;
+    const nearbyRescue = this.screen === 'map' && rescueAvailable(this.blackout.seen, this.rescue)
+      ? nearbyRescueTarget(this.player, this.rescue)
+      : null;
     let message = '출입 금지 연구 구역입니다. 방향키나 WASD로 영수를 이동하세요.';
+    if (this.screen === 'warning') {
+      const line = WARNING_LINES[this.warning.step];
+      message = `${line.speaker}: ${line.text}` + (this.warning.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
+    if (this.screen === 'blackout') {
+      const line = BLACKOUT_LINES[this.blackout.step];
+      message = (line.speaker ? `${line.speaker}: ${line.text}` : line.text) + (this.blackout.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
+    if (this.screen === 'rescue' && this.rescueDialogue) {
+      const target = RESCUE_TARGETS.find((candidate) => candidate.id === this.rescueDialogue!.targetId)!;
+      const line = target.lines[this.rescueDialogue.step];
+      message = (line.speaker ? `${line.speaker}: ${line.text}` : line.text) + (this.rescueDialogue.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
+    if (this.screen === 'rescue' && this.rescueOutro === 'line') {
+      message = `${RESCUE_COMPLETE_LINE.text} E 또는 Enter, 화면 클릭으로 계속하세요.`;
+    }
+    if (this.screen === 'rescue' && this.rescueOutro === 'fade') message = RESCUE_COMPLETE_LINE.text;
+    if (this.screen === 'dinner') {
+      const line = DINNER_LINES[this.dinner.step];
+      message = (line.speaker ? `${line.speaker}: ${line.text}` : line.text) + (this.dinner.seen ? '' : ' E 또는 Enter, 화면 클릭으로 계속하세요.');
+    }
     if (this.screen === 'map' && nearDevice) message = '기억 재구성 장치 앞입니다. E 또는 Enter로 작동하세요.';
     if (this.screen === 'map' && this.flow.deviceComplete) message = this.collection.completed
       ? `${this.collection.message} Chapter03 중간 기록을 완료했습니다.`
       : this.collection.collected.length > 0
         ? `${this.collection.message} ${this.collection.collected.length}개 완료, ${MEMORY_OBJECTS.length - this.collection.collected.length}개 남았습니다.`
         : `가족과 함께 추억을 정리합니다. ${MEMORY_OBJECTS.length}개 남았습니다.`;
+    if (this.screen === 'map' && rescueAvailable(this.blackout.seen, this.rescue)) {
+      message = `우주선이 낯선 풍경으로 바뀌었다. 흩어진 가족 ${RESCUE_TARGETS.length - this.rescue.rescued.length}명을 더 찾아야 합니다.`;
+    }
     if (nearObject) message = `${nearbyMemoryObject(this.player, this.collection)?.name} 앞입니다. E 또는 Enter로 정리하세요.`;
+    if (nearbyRescue) message = `${nearbyRescue.name} 앞입니다. E 또는 Enter로 구출하세요.`;
     if (this.screen === 'playing') message = `${this.state.feedback} 현재 기억은 ${MEMORY_CLUES[this.state.clueIndex].label}, 안정성 ${this.state.stability}입니다.`;
     if (this.screen === 'awakening') message = `생체 용기 개방 중. ${awakeningStage(performance.now() - this.awakeningStartedAt)}개가 열렸습니다.`;
     if (this.screen === 'result') message = this.state.status === 'success' ? '재구성에 성공했습니다. 연구 구역으로 돌아가세요.' : '재구성에 실패했습니다. 연구 구역으로 돌아가 재시도할 수 있습니다.';
@@ -519,10 +801,16 @@ export class MemoryReconstructionGame {
       ? '모든 기억 연결을 정리했습니다. 기억은 삭제하지 않고 기록으로 남겼습니다. 다음 장면은 마지막 식탁입니다.'
       : `${LETTING_GO_MEMORIES[this.lettingGo.index].object}. ${this.lettingGo.feedback} ${this.lettingGo.resolved.length}개 완료. 붙잡는다, 기록으로 남긴다, 놓아준다 중 선택하세요.`;
     if (this.screen === 'epilogue') message = `${this.epilogue.phase}. ${this.epilogue.message}`;
+    if (this.screen === 'epilogue' && this.epilogue.phase === 'corridor' && nearArchiveDoor(this.player)) {
+      message = '기록 보관소 입구입니다. E 또는 Enter로 입장하세요.';
+    }
+    const nearbyRecord = this.screen === 'epilogue' ? nearbyArchiveRecord(this.player, this.epilogue) : null;
+    if (nearbyRecord) message = `${nearbyRecord.name} 앞입니다. E 또는 Enter로 기록을 배치하세요.`;
     if (message !== this.lastAnnouncement) { this.lastAnnouncement = message; this.controls.liveRegion.textContent = message; }
   }
 
   private currentMap(): PlayableMapAssetEntry {
+    if (this.screen === 'rescue' || (this.screen === 'map' && rescueAvailable(this.blackout.seen, this.rescue))) return SPACESHIP_MAP;
     return this.flow.deviceComplete ? MEMORY_ROOM_MAP : SPACESHIP_MAP;
   }
 }
