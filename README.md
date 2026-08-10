@@ -43,7 +43,7 @@ npm run preview     # 빌드 결과를 로컬에서 확인
 ├── .github/
 │   └── workflows/
 │       ├── pull-request-checks.yml # PR 타입 검사·테스트·빌드
-│       └── deploy-pages.yml        # main 검증 후 Pages 자동 배포
+│       └── deploy-pages.yml        # develop 검증 후 Pages 자동 배포
 ├── src/                     # 실제 배포되는 게임 코드
 │   ├── features/            # 클라이언트부터 서버까지 기능별 코드
 │   │   ├── chapter1/        # 리듬 호러 챕터 코드와 전용 에셋
@@ -92,7 +92,7 @@ npm run preview     # 빌드 결과를 로컬에서 확인
 6. 로컬 타입 검사, 테스트, 디자인 검사와 빌드를 통과시킵니다.
 7. 개발자가 diff와 실제 동작을 확인하고 `Developer Final Check`를 작성합니다.
 8. Pull Request를 열고 GitHub의 `Pull Request Checks / Verify`가 통과했는지 확인합니다.
-9. 최소 1명이 리뷰한 뒤 `main`에 병합합니다.
+9. 최소 1명이 리뷰한 뒤 `develop`에 병합합니다.
 10. 병합 직후 `Deploy to GitHub Pages`가 검증·빌드·배포를 완료했는지 확인합니다.
 
 ## 로컬 확인과 자동 배포
@@ -108,9 +108,9 @@ npm run build
 npm run preview
 ```
 
-Pull Request에서는 `.github/workflows/pull-request-checks.yml`이 검사만 실행하며 운영 사이트를 변경하지 않습니다. Pull Request가 `main`에 병합되면 `.github/workflows/deploy-pages.yml`이 같은 검사를 다시 실행하고, 모두 성공했을 때 GitHub Pages에 자동 배포합니다. 이 흐름을 보장하려면 GitHub Ruleset에서 `main` 직접 push를 막고 Pull Request와 `Pull Request Checks / Verify` 통과를 필수로 설정해야 합니다.
+Pull Request에서는 `.github/workflows/pull-request-checks.yml`이 검사만 실행하며 운영 사이트를 변경하지 않습니다. Pull Request가 기본 브랜치인 `develop`에 병합되면 `.github/workflows/deploy-pages.yml`이 같은 검사를 다시 실행하고, 모두 성공했을 때 GitHub Pages에 자동 배포합니다. 이 흐름을 보장하려면 GitHub Ruleset에서 `develop` 직접 push를 막고 Pull Request와 `Pull Request Checks / Verify` 통과를 필수로 설정해야 합니다.
 
-최초 한 번은 GitHub 저장소에서 `main` 보호 Ruleset을 활성화하고, **Settings → Pages → Source**를 `GitHub Actions`로 선택해야 합니다. 설정과 오류 대응은 [`02_Release_for_GitPage.md`](./02_Release_for_GitPage.md)를 참고하세요.
+최초 한 번은 GitHub 저장소에서 `develop` 보호 Ruleset을 활성화하고, **Settings → Pages → Source**를 `GitHub Actions`로 선택해야 합니다. 설정과 오류 대응은 [`02_Release_for_GitPage.md`](./02_Release_for_GitPage.md)를 참고하세요.
 
 커밋 메시지는 `feat: 플레이어 이동 추가`, `fix: 점수 초기화 오류 수정`, `test: 충돌 시나리오 추가`처럼 변경 종류와 내용을 짧게 적습니다.
 
