@@ -1,10 +1,14 @@
-import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
+import yeongsuIdentityUrl from '../../../assets/yeongsu-guard.png';
+import apartmentStairwellUrl from '../assets/chapter01-apartment-stairwell.png';
+import cctvWallBackgroundUrl from '../assets/chapter01-cctv-wall.png';
+import guardRoomBackgroundUrl from '../assets/chapter01-guard-room.png';
 import {
   CHAPTER01_STORY,
   advanceChapter01Story,
   type Chapter01Backdrop,
   type Chapter01StoryBeat,
 } from '../shared/chapter01Story';
+import { getContainedRasterGeometry } from '../shared/chapter01Assets';
 
 const COLORS = {
   background: '#030712',
@@ -21,6 +25,9 @@ const PANEL = { x: 24, y: 372, width: 912, height: 144, radius: 8 } as const;
 
 export class Chapter1StoryGame {
   private readonly context: CanvasRenderingContext2D;
+  private readonly titleImage: HTMLImageElement | null;
+  private readonly guardRoomImage: HTMLImageElement | null;
+  private readonly cctvWallImage: HTMLImageElement | null;
   private readonly basementImage: HTMLImageElement | null;
   private animationId: number | null = null;
   private currentIndex = 0;
@@ -35,8 +42,24 @@ export class Chapter1StoryGame {
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
     this.context = context;
 
-    this.basementImage = typeof Image === 'undefined' ? null : new Image();
-    if (this.basementImage) this.basementImage.src = basementBackgroundUrl;
+    this.titleImage = this.createImage(yeongsuIdentityUrl);
+    this.guardRoomImage = this.createImage(guardRoomBackgroundUrl);
+    this.cctvWallImage = this.createImage(cctvWallBackgroundUrl);
+    this.basementImage = this.createImage(apartmentStairwellUrl);
+  }
+
+  private createImage(url: string): HTMLImageElement | null {
+    if (typeof Image === 'undefined') return null;
+    const image = new Image();
+    image.src = url;
+    return image;
+  }
+
+  private drawLoadedBackground(image: HTMLImageElement | null): boolean {
+    if (!image?.complete || image.naturalWidth <= 0) return false;
+    this.context.imageSmoothingEnabled = true;
+    this.context.drawImage(image, 0, 0, this.canvas.width, this.canvas.height);
+    return true;
   }
 
   mount(): void {
@@ -125,6 +148,20 @@ export class Chapter1StoryGame {
     this.context.fillStyle = gradient;
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+    if (this.titleImage?.complete && this.titleImage.naturalWidth > 0) {
+      const geometry = getContainedRasterGeometry(
+        this.titleImage.naturalWidth,
+        this.titleImage.naturalHeight,
+        this.canvas.width,
+        this.canvas.height,
+        0,
+      );
+      this.context.imageSmoothingEnabled = true;
+      this.context.drawImage(this.titleImage, geometry.x, geometry.y, geometry.width, geometry.height);
+      this.context.fillStyle = 'rgb(3 7 18 / 68%)';
+      this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
     this.context.strokeStyle = 'rgb(129 140 248 / 18%)';
     for (let y = 0; y < this.canvas.height; y += 8) {
       this.context.beginPath();
@@ -136,6 +173,12 @@ export class Chapter1StoryGame {
 
   private drawGuardRoom(abandoned: boolean): void {
     const context = this.context;
+    if (this.drawLoadedBackground(this.guardRoomImage)) {
+      context.fillStyle = abandoned ? 'rgb(3 7 18 / 70%)' : 'rgb(3 7 18 / 20%)';
+      context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      return;
+    }
+
     context.fillStyle = abandoned ? '#0b1018' : '#151b25';
     context.fillRect(0, 0, this.canvas.width, 372);
     context.fillStyle = '#090d14';
@@ -176,25 +219,30 @@ export class Chapter1StoryGame {
 
   private drawCctvWall(backdrop: Chapter01Backdrop): void {
     const context = this.context;
-    context.fillStyle = '#05080d';
-    context.fillRect(0, 0, this.canvas.width, 372);
+    if (this.drawLoadedBackground(this.cctvWallImage)) {
+      context.fillStyle = 'rgb(3 7 18 / 38%)';
+      context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    } else {
+      context.fillStyle = '#05080d';
+      context.fillRect(0, 0, this.canvas.width, 372);
 
-    for (let index = 0; index < 12; index += 1) {
-      const column = index % 4;
-      const row = Math.floor(index / 4);
-      const x = 22 + column * 232;
-      const y = 28 + row * 108;
-      context.fillStyle = index === 9 ? '#101c22' : '#0b111a';
-      context.fillRect(x, y, 216, 94);
-      context.strokeStyle = index === 9 ? COLORS.feedback : COLORS.border;
-      context.strokeRect(x, y, 216, 94);
+      for (let index = 0; index < 12; index += 1) {
+        const column = index % 4;
+        const row = Math.floor(index / 4);
+        const x = 22 + column * 232;
+        const y = 28 + row * 108;
+        context.fillStyle = index === 9 ? '#101c22' : '#0b111a';
+        context.fillRect(x, y, 216, 94);
+        context.strokeStyle = index === 9 ? COLORS.feedback : COLORS.border;
+        context.strokeRect(x, y, 216, 94);
 
-      context.strokeStyle = 'rgb(199 210 254 / 8%)';
-      for (let scanY = y + 7; scanY < y + 94; scanY += 9) {
-        context.beginPath();
-        context.moveTo(x, scanY);
-        context.lineTo(x + 216, scanY);
-        context.stroke();
+        context.strokeStyle = 'rgb(199 210 254 / 8%)';
+        for (let scanY = y + 7; scanY < y + 94; scanY += 9) {
+          context.beginPath();
+          context.moveTo(x, scanY);
+          context.lineTo(x + 216, scanY);
+          context.stroke();
+        }
       }
     }
 
@@ -214,10 +262,7 @@ export class Chapter1StoryGame {
   }
 
   private drawBasement(): void {
-    const image = this.basementImage;
-    if (image?.complete && image.naturalWidth > 0) {
-      this.context.drawImage(image, 0, 0, this.canvas.width, 372);
-    } else {
+    if (!this.drawLoadedBackground(this.basementImage)) {
       const gradient = this.context.createLinearGradient(0, 0, 0, 372);
       gradient.addColorStop(0, '#17262d');
       gradient.addColorStop(1, '#070b11');
@@ -226,7 +271,7 @@ export class Chapter1StoryGame {
     }
 
     this.context.fillStyle = 'rgb(3 7 18 / 44%)';
-    this.context.fillRect(0, 0, this.canvas.width, 372);
+    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   private drawWhiteout(): void {
