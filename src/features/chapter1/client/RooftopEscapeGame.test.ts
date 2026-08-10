@@ -7,7 +7,10 @@ interface EscapeGameControls {
   state: RooftopEscapeState;
   leftPressed: boolean;
   rightPressed: boolean;
+  playerFacing: -1 | 1;
+  monsterFacing: -1 | 1;
   update(deltaSeconds: number): void;
+  render(): void;
 }
 
 interface ListenerEvent {
@@ -19,7 +22,27 @@ interface ListenerEvent {
 function setup() {
   const windowListeners = new Map<string, (event: ListenerEvent) => void>();
   const canvasListeners = new Map<string, (event: { clientX: number; pointerId: number }) => void>();
-  const context = {} as CanvasRenderingContext2D;
+  const smoothingValues: boolean[] = [];
+  const context = {
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    strokeRect: vi.fn(),
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    ellipse: vi.fn(),
+    fill: vi.fn(),
+    fillText: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    translate: vi.fn(),
+    scale: vi.fn(),
+    drawImage: vi.fn(),
+    createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+  } as unknown as CanvasRenderingContext2D;
+  Object.defineProperty(context, 'imageSmoothingEnabled', {
+    get: () => smoothingValues.at(-1) ?? true,
+    set: (value: boolean) => smoothingValues.push(value),
+  });
   const canvas = {
     width: 960,
     height: 540,
@@ -40,12 +63,20 @@ function setup() {
   });
   vi.stubGlobal('requestAnimationFrame', vi.fn(() => 9));
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  vi.stubGlobal('Image', class LoadedImage {
+    complete = true;
+    naturalWidth = 1254;
+    naturalHeight = 1254;
+    src = '';
+  });
 
   const game = new RooftopEscapeGame(canvas, liveRegion);
   game.mount();
   return {
     game,
     controls: game as unknown as EscapeGameControls,
+    context,
+    smoothingValues,
     canvas,
     liveRegion,
     keydown: (event: ListenerEvent) => windowListeners.get('keydown')?.(event),
@@ -80,6 +111,75 @@ describe('RooftopEscapeGame', () => {
 
     setupResult.pointerdown(100);
     expect(setupResult.canvas.setPointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it('영수와 귀신이 이동·추격 방향을 바라보고 정지 중에는 마지막 방향을 유지한다', () => {
+    const setupResult = setup();
+    setupResult.keydown({ code: 'Enter', repeat: false, preventDefault: vi.fn() });
+
+    expect(setupResult.controls.playerFacing).toBe(1);
+    setupResult.keydown({ code: 'KeyA', preventDefault: vi.fn() });
+    setupResult.controls.update(0.01);
+    expect(setupResult.controls.playerFacing).toBe(-1);
+    setupResult.keyup({ code: 'KeyA' });
+    setupResult.controls.update(0.01);
+    expect(setupResult.controls.playerFacing).toBe(-1);
+
+    setupResult.controls.state = {
+      ...setupResult.controls.state,
+      playerX: 200,
+      monsterX: 700,
+      floorGraceSeconds: 0,
+    };
+    setupResult.controls.update(0.01);
+    expect(setupResult.controls.monsterFacing).toBe(-1);
+
+    setupResult.controls.state = {
+      ...setupResult.controls.state,
+      floorIndex: 0,
+      playerX: 850,
+      monsterX: -80,
+      floorGraceSeconds: 1,
+    };
+    setupResult.controls.update(0);
+    expect(setupResult.controls.state.floorIndex).toBe(1);
+    expect(setupResult.controls.playerFacing).toBe(-1);
+    expect(setupResult.controls.monsterFacing).toBe(-1);
+  });
+
+  it('탈출 게임 영수는 새 4방향 시트의 측면 프레임을 픽셀 보간 없이 반전 렌더링한다', () => {
+    const setupResult = setup();
+    setupResult.keydown({ code: 'Enter', repeat: false, preventDefault: vi.fn() });
+    setupResult.keydown({ code: 'KeyA', preventDefault: vi.fn() });
+    setupResult.controls.update(0.01);
+    setupResult.controls.render();
+
+    expect(setupResult.context.translate).toHaveBeenCalledWith(expect.any(Number), 0);
+    expect(setupResult.context.scale).toHaveBeenNthCalledWith(1, -1, 1);
+    expect(setupResult.context.scale).toHaveBeenNthCalledWith(2, 1, 1);
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(
+      expect.objectContaining({ src: expect.stringContaining('chapter01-yeongsu-guard-sprites') }),
+      128,
+      0,
+      64,
+      80,
+      -64,
+      250,
+      128,
+      160,
+    );
+    expect(setupResult.smoothingValues).toContain(false);
+
+    vi.mocked(setupResult.context.scale).mockClear();
+    setupResult.controls.state = {
+      ...setupResult.controls.state,
+      playerX: 200,
+      monsterX: 700,
+      floorGraceSeconds: 0,
+    };
+    setupResult.controls.update(0.01);
+    setupResult.controls.render();
+    expect(setupResult.context.scale).toHaveBeenNthCalledWith(2, -1, 1);
   });
 
   it('피격과 옥상 탈출 결과를 안내한다', () => {

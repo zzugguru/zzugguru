@@ -1,6 +1,6 @@
 import backgroundMusicUrl from '../assets/뒤를 쫓는 밤.mp3';
 import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
-import yeongsuGuardUrl from '../assets/yeongsu-guard-sprite.png';
+import yeongsuGuardUrl from '../../../assets/yeongsu-guard-sprite.png';
 import cctvMonsterUrl from '../assets/cctv-monster-sprite.png';
 import { CHART, cueAt } from '../shared/content';
 import { tutorialTipFor } from '../shared/tutorial';

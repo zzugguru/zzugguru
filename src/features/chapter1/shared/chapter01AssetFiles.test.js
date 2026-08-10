@@ -1,8 +1,14 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { CHAPTER01_BACKGROUNDS, CHAPTER01_IDENTITY_SOURCE, CHAPTER01_SPRITES } from './chapter01Assets';
+import {
+  CHAPTER01_BACKGROUNDS,
+  CHAPTER01_IDENTITY_SOURCE,
+  CHAPTER01_SPRITES,
+  CHAPTER01_TOPVIEW_BACKGROUNDS,
+  CHAPTER01_TOPVIEW_SPRITE,
+} from './chapter01Assets';
 
 const PNG_SIGNATURE_BYTES = 8;
 
@@ -134,11 +140,17 @@ describe('Chapter 01 raster assets', () => {
       expect([header.width, header.height]).toEqual([asset.width, asset.height]);
       expect([header.bitDepth, header.colorType, header.compression, header.filter, header.interlace]).toEqual([8, 2, 0, 0, 0]);
     }
+
+    for (const asset of Object.values(CHAPTER01_TOPVIEW_BACKGROUNDS)) {
+      const { header } = readPngChunks(readFileSync(resolve(asset.path)));
+      expect([header.width, header.height]).toEqual([asset.width, asset.height]);
+      expect([header.bitDepth, header.colorType, header.compression, header.filter, header.interlace]).toEqual([8, 2, 0, 0, 0]);
+    }
   });
 
   it('keeps the approved transparent padding and silhouette bounds for both chase sprites', () => {
     const spriteAssets = [
-      ['src/features/chapter1/assets/yeongsu-guard-sprite.png', CHAPTER01_SPRITES.yeongsu],
+      ['src/assets/yeongsu-guard-sprite.png', CHAPTER01_SPRITES.yeongsu],
       ['src/features/chapter1/assets/cctv-monster-sprite.png', CHAPTER01_SPRITES.monster],
     ];
 
@@ -147,5 +159,43 @@ describe('Chapter 01 raster assets', () => {
       expect([image.width, image.height]).toEqual([metadata.sourceWidth, metadata.sourceHeight]);
       expect(alphaBounds(image)).toEqual(metadata.alphaBounds);
     }
+  });
+
+  it('keeps Yeongsu character art in the common asset directory', () => {
+    const commonAssets = [
+      CHAPTER01_IDENTITY_SOURCE.path,
+      CHAPTER01_TOPVIEW_SPRITE.path,
+      'src/assets/yeongsu-guard-sprite.png',
+    ];
+    const formerFeatureAssets = [
+      'src/features/chapter1/assets/yeongsu-guard.png',
+      'src/features/chapter1/assets/chapter01-yeongsu-guard-sprites.png',
+      'src/features/chapter1/assets/yeongsu-guard-sprite.png',
+    ];
+
+    for (const path of commonAssets) expect(existsSync(resolve(path)), path).toBe(true);
+    for (const path of formerFeatureAssets) expect(existsSync(resolve(path)), path).toBe(false);
+  });
+
+  it('keeps all four Chapter 1 top-view guard frames on the approved alpha baseline', () => {
+    const image = decodeRgbaPng(readFileSync(resolve(CHAPTER01_TOPVIEW_SPRITE.path)));
+    expect([image.width, image.height]).toEqual([256, 80]);
+
+    const bounds = CHAPTER01_TOPVIEW_SPRITE.alphaBounds.map((_, frameIndex) => {
+      const frame = {
+        width: 64,
+        height: 80,
+        rgba: new Uint8Array(64 * 80 * 4),
+      };
+      for (let y = 0; y < 80; y += 1) {
+        for (let x = 0; x < 64; x += 1) {
+          const sourceOffset = (y * image.width + frameIndex * 64 + x) * 4;
+          const targetOffset = (y * 64 + x) * 4;
+          frame.rgba.set(image.rgba.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+        }
+      }
+      return alphaBounds(frame);
+    });
+    expect(bounds).toEqual(CHAPTER01_TOPVIEW_SPRITE.alphaBounds);
   });
 });

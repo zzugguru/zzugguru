@@ -4,6 +4,8 @@ import {
   CHAPTER01_CANVAS,
   CHAPTER01_IDENTITY_SOURCE,
   CHAPTER01_SPRITES,
+  CHAPTER01_TOPVIEW_BACKGROUNDS,
+  CHAPTER01_TOPVIEW_SPRITE,
   getContainedRasterGeometry,
   getSpriteDrawGeometry,
 } from './chapter01Assets';
@@ -79,5 +81,24 @@ describe('Chapter 01 asset layout metadata', () => {
     expect(geometry.width / geometry.height).toBe(CHAPTER01_IDENTITY_SOURCE.width / CHAPTER01_IDENTITY_SOURCE.height);
     expect(geometry.x + geometry.width).toBeLessThanOrEqual(CHAPTER01_CANVAS.width);
     expect(geometry.y + geometry.height).toBeLessThanOrEqual(CHAPTER01_CANVAS.height);
+  });
+
+  it('keeps native 960x540 top-view maps and a four-cell 256x80 guard sheet', () => {
+    for (const background of Object.values(CHAPTER01_TOPVIEW_BACKGROUNDS)) {
+      expect([background.width, background.height, background.format, background.colorMode]).toEqual([
+        960,
+        540,
+        'PNG',
+        'RGB',
+      ]);
+    }
+    expect([
+      CHAPTER01_TOPVIEW_SPRITE.path,
+      CHAPTER01_TOPVIEW_SPRITE.width,
+      CHAPTER01_TOPVIEW_SPRITE.height,
+      CHAPTER01_TOPVIEW_SPRITE.frameWidth,
+      CHAPTER01_TOPVIEW_SPRITE.frameHeight,
+      CHAPTER01_TOPVIEW_SPRITE.colorMode,
+    ]).toEqual(['src/assets/chapter01-yeongsu-guard-sprites.png', 256, 80, 64, 80, 'RGBA']);
   });
 });
