@@ -58,6 +58,12 @@ function setup() {
     return 7;
   }));
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  vi.stubGlobal('Image', class LoadedImage {
+    complete = true;
+    naturalWidth = 1024;
+    naturalHeight = 1024;
+    src = '';
+  });
 
   const game = new Chapter1StoryGame(canvas, liveRegion, onComplete);
   return {
@@ -77,6 +83,15 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Chapter1StoryGame', () => {
+  it('renders the square Yeongsu title source at a contained 1:1 size', () => {
+    const setupResult = setup();
+    setupResult.game.mount();
+    setupResult.renderFrame();
+
+    expect(setupResult.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 540, 540);
+    expect((setupResult.context as unknown as { imageSmoothingEnabled: boolean }).imageSmoothingEnabled).toBe(true);
+  });
+
   it('마운트 후 Z, Enter, 클릭 입력으로 진행하고 현재 내용을 알린다', () => {
     const setupResult = setup();
     const controls = setupResult.game as unknown as StoryGameControls;

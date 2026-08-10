@@ -1,6 +1,12 @@
-import basementBackgroundUrl from '../assets/b1-basement-corridor.png';
+import apartmentStairwellUrl from '../assets/chapter01-apartment-stairwell.png';
+import rooftopBackgroundUrl from '../assets/chapter01-rooftop.png';
 import monsterSpriteUrl from '../assets/cctv-monster-sprite.png';
 import yeongsuSpriteUrl from '../assets/yeongsu-guard-sprite.png';
+import {
+  CHAPTER01_SPRITES,
+  getSpriteDrawGeometry,
+  type Chapter01SpriteMetadata,
+} from '../shared/chapter01Assets';
 import {
   ESCAPE_FLOORS,
   createRooftopEscapeState,
@@ -25,6 +31,7 @@ const COLORS = {
 export class RooftopEscapeGame {
   private readonly context: CanvasRenderingContext2D;
   private readonly backgroundImage: HTMLImageElement | null;
+  private readonly rooftopImage: HTMLImageElement | null;
   private readonly playerImage: HTMLImageElement | null;
   private readonly monsterImage: HTMLImageElement | null;
   private state: RooftopEscapeState = createRooftopEscapeState();
@@ -43,7 +50,8 @@ export class RooftopEscapeGame {
     if (!context) throw new Error('Canvas 2D context를 만들 수 없습니다.');
     this.context = context;
 
-    this.backgroundImage = this.createImage(basementBackgroundUrl);
+    this.backgroundImage = this.createImage(apartmentStairwellUrl);
+    this.rooftopImage = this.createImage(rooftopBackgroundUrl);
     this.playerImage = this.createImage(yeongsuSpriteUrl);
     this.monsterImage = this.createImage(monsterSpriteUrl);
   }
@@ -190,7 +198,9 @@ export class RooftopEscapeGame {
 
   private drawCorridor(): void {
     const context = this.context;
-    if (this.backgroundImage?.complete && this.backgroundImage.naturalWidth > 0) {
+    const backgroundLoaded = Boolean(this.backgroundImage?.complete && this.backgroundImage.naturalWidth > 0);
+    if (backgroundLoaded && this.backgroundImage) {
+      context.imageSmoothingEnabled = true;
       context.drawImage(this.backgroundImage, 0, 0, this.canvas.width, this.canvas.height);
     } else {
       const gradient = context.createLinearGradient(0, 0, 0, this.canvas.height);
@@ -198,25 +208,25 @@ export class RooftopEscapeGame {
       gradient.addColorStop(1, COLORS.background);
       context.fillStyle = gradient;
       context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      context.fillStyle = COLORS.background;
+      context.fillRect(0, 390, this.canvas.width, 150);
     }
 
     context.fillStyle = `rgb(3 7 18 / ${42 + this.state.floorIndex * 6}%)`;
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    context.fillStyle = COLORS.background;
-    context.fillRect(0, 390, this.canvas.width, 150);
     this.drawStairDoor(exitXForFloor(this.state.floorIndex));
-    this.drawCharacter(this.playerImage, this.state.playerX, 402, 98, false);
-    this.drawCharacter(this.monsterImage, this.state.monsterX, 406, 158, true);
+    this.drawCharacter(this.playerImage, this.state.playerX, 402, CHAPTER01_SPRITES.yeongsu, false);
+    this.drawCharacter(this.monsterImage, this.state.monsterX, 406, CHAPTER01_SPRITES.monster, true);
   }
 
   private drawStairDoor(x: number): void {
     const context = this.context;
-    context.fillStyle = COLORS.surface;
+    context.fillStyle = 'rgb(17 24 39 / 34%)';
     context.fillRect(x - 48, 218, 96, 174);
     context.strokeStyle = COLORS.feedback;
     context.lineWidth = 3;
     context.strokeRect(x - 48, 218, 96, 174);
-    context.fillStyle = COLORS.danger;
+    context.fillStyle = 'rgb(251 113 133 / 90%)';
     context.fillRect(x - 35, 232, 70, 24);
     context.textAlign = 'center';
     context.fillStyle = COLORS.text;
@@ -233,24 +243,32 @@ export class RooftopEscapeGame {
     image: HTMLImageElement | null,
     x: number,
     floorY: number,
-    height: number,
+    metadata: Chapter01SpriteMetadata,
     monster: boolean,
   ): void {
     const context = this.context;
+    const geometry = getSpriteDrawGeometry(metadata, x, floorY);
     context.save();
-    context.translate(x, floorY);
     if (monster) {
       context.shadowColor = COLORS.danger;
       context.shadowBlur = 18;
     }
 
     if (image?.complete && image.naturalWidth > 0) {
-      const width = height * (image.naturalWidth / image.naturalHeight);
-      context.drawImage(image, -width / 2, -height, width, height);
+      context.imageSmoothingEnabled = true;
+      context.drawImage(image, geometry.x, geometry.y, geometry.width, geometry.height);
     } else {
       context.fillStyle = monster ? COLORS.background : COLORS.primary;
       context.beginPath();
-      context.ellipse(0, -height / 2, monster ? 28 : 19, height / 2, 0, 0, Math.PI * 2);
+      context.ellipse(
+        x,
+        floorY - metadata.renderHeight / 2,
+        monster ? 28 : 19,
+        metadata.renderHeight / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
       context.fill();
     }
     context.restore();
@@ -300,6 +318,10 @@ export class RooftopEscapeGame {
     const context = this.context;
     context.fillStyle = 'rgb(3 7 18 / 82%)';
     context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    context.save();
+    context.globalAlpha = 0.72;
+    this.drawCharacter(this.monsterImage, 820, 420, CHAPTER01_SPRITES.monster, true);
+    context.restore();
     context.textAlign = 'center';
     context.fillStyle = COLORS.muted;
     context.font = '20px Inter, Pretendard, system-ui, sans-serif';
@@ -322,19 +344,22 @@ export class RooftopEscapeGame {
 
   private drawRooftop(): void {
     const context = this.context;
-    const gradient = context.createLinearGradient(0, 0, 0, this.canvas.height);
-    gradient.addColorStop(0, COLORS.surface);
-    gradient.addColorStop(0.6, COLORS.primary);
-    gradient.addColorStop(1, COLORS.background);
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    context.fillStyle = COLORS.surface;
-    context.fillRect(0, 376, this.canvas.width, 164);
-    context.fillStyle = COLORS.muted;
-    for (let index = 0; index < 24; index += 1) {
-      context.fillRect(30 + index * 41, 44 + (index % 5) * 23, 2, 2);
+    if (this.rooftopImage?.complete && this.rooftopImage.naturalWidth > 0) {
+      context.imageSmoothingEnabled = true;
+      context.drawImage(this.rooftopImage, 0, 0, this.canvas.width, this.canvas.height);
+      context.fillStyle = 'rgb(3 7 18 / 28%)';
+      context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    } else {
+      const gradient = context.createLinearGradient(0, 0, 0, this.canvas.height);
+      gradient.addColorStop(0, COLORS.surface);
+      gradient.addColorStop(0.6, COLORS.primary);
+      gradient.addColorStop(1, COLORS.background);
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      context.fillStyle = COLORS.surface;
+      context.fillRect(0, 376, this.canvas.width, 164);
     }
-    this.drawCharacter(this.playerImage, 480, 407, 106, false);
+    this.drawCharacter(this.playerImage, 480, 407, CHAPTER01_SPRITES.yeongsu, false);
   }
 
   private drawResult(escaped: boolean): void {
