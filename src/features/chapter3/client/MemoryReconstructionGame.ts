@@ -18,6 +18,7 @@ import { drawPlayerSprite, facingFromMovement, type PlayerFacing } from './playe
 import { drawInteractionObject, type InteractionObjectAsset } from './interactionObjectSprite';
 import { drawFamilyNpcSprite, familyNpcAssetPath, familyNpcDestination } from './familyNpcSprite';
 import { alienFamilyAssetPath, alienFamilyDestination, drawAlienFamilyNpc } from './alienFamilyNpcSprite';
+import { bioVesselAssetPath, drawBioVesselPanel, puzzleVesselState, type BioVesselState } from './bioVesselSprite';
 
 type Screen = 'map' | 'warning' | 'blackout' | 'rescue' | 'dinner' | 'playing' | 'awakening' | 'result' | 'letting-go' | 'epilogue';
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -77,6 +78,11 @@ export class MemoryReconstructionGame {
     mother: new Image(),
     sister: new Image(),
   };
+  private readonly bioVesselImages: Readonly<Record<FamilyId, HTMLImageElement>> = {
+    wife: new Image(),
+    son: new Image(),
+    daughter: new Image(),
+  };
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly controls: Controls) {
     const context = canvas.getContext('2d');
@@ -91,6 +97,7 @@ export class MemoryReconstructionGame {
     this.archiveImage.src = new URL('../assets/chapter03-archive.png', import.meta.url).href;
     this.objectImage.src = new URL('../assets/interaction-objects.png', import.meta.url).href;
     for (const family of FAMILY) this.familyImages[family.id].src = familyNpcAssetPath(family.id);
+    for (const family of FAMILY) this.bioVesselImages[family.id].src = bioVesselAssetPath(family.id);
     for (const target of RESCUE_TARGETS) this.alienFamilyImages[target.id].src = alienFamilyAssetPath(target.id);
   }
 
@@ -491,10 +498,12 @@ export class MemoryReconstructionGame {
     ctx.textAlign = 'center'; ctx.fillStyle = '#f9fafb'; ctx.font = '700 27px system-ui'; ctx.fillText(`“${MEMORY_CLUES[this.state.clueIndex].label}”`, 480, 130);
     ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui'; ctx.fillText('이 기억은 누구의 것입니까?', 480, 168);
     FAMILY.forEach((family, index) => {
-      const x = 54 + index * 294; const complete = this.state.completed[family.id] === REQUIRED_BY_FAMILY[family.id];
-      ctx.fillStyle = complete ? '#312e81' : '#111827'; ctx.fillRect(x, 265, 264, 190); ctx.strokeStyle = complete ? '#818cf8' : '#374151'; ctx.strokeRect(x, 265, 264, 190);
-      ctx.fillStyle = '#f9fafb'; ctx.font = '700 25px system-ui'; ctx.fillText(family.name, x + 132, 348);
-      ctx.fillStyle = '#c7d2fe'; ctx.font = '16px system-ui'; ctx.fillText(`${this.state.completed[family.id]} / ${REQUIRED_BY_FAMILY[family.id]} 기억 연결`, x + 132, 386);
+      const x = 54 + index * 294; const rect = { x, y: 265, width: 264, height: 190 };
+      const vesselState = puzzleVesselState(this.state, family.id);
+      drawBioVesselPanel(ctx, this.bioVesselImages[family.id], rect, vesselState, performance.now(), {
+        name: family.name,
+        progress: `${this.state.completed[family.id]}/${REQUIRED_BY_FAMILY[family.id]} 기억 연결`,
+      });
     });
     ctx.fillStyle = this.state.feedback.includes('일치하지') ? '#fb7185' : '#c7d2fe'; ctx.fillText(this.state.feedback, 480, 492);
   }
@@ -502,7 +511,11 @@ export class MemoryReconstructionGame {
   private drawAwakening(): void {
     const stage = awakeningStage(performance.now() - this.awakeningStartedAt); const ctx = this.context;
     ctx.fillStyle = '#111827'; ctx.fillRect(26, 22, 908, 496); ctx.textAlign = 'center'; ctx.fillStyle = '#f9fafb'; ctx.font = '700 30px system-ui'; ctx.fillText('생체 용기 개방 중', 480, 126);
-    FAMILY.forEach((family, index) => { const x = 54 + index * 294; const open = stage > index; ctx.fillStyle = open ? '#312e81' : '#111827'; ctx.fillRect(x, 185, 264, 220); ctx.strokeStyle = open ? '#818cf8' : '#374151'; ctx.strokeRect(x, 185, 264, 220); ctx.fillStyle = '#f9fafb'; ctx.font = '700 23px system-ui'; ctx.fillText(family.name, x + 132, 270); ctx.font = '16px system-ui'; ctx.fillText(open ? `${index + 1}번째 용기 개방 · 눈을 떴다` : '생체 신호 대기 중', x + 132, 320); });
+    FAMILY.forEach((family, index) => {
+      const x = 54 + index * 294; const open = stage > index; const vesselState: BioVesselState = open ? 'open' : 'connected';
+      const rect = { x, y: 185, width: 264, height: 220 };
+      drawBioVesselPanel(ctx, this.bioVesselImages[family.id], rect, vesselState, performance.now(), { name: family.name });
+    });
   }
 
   private drawResult(): void {
