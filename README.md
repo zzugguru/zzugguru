@@ -2,13 +2,19 @@
 
 3명이 함께 웹 게임을 만들기 위한 기본 프로젝트입니다. 처음에는 구조를 단순하게 유지하고, 게임이 커질 때 폴더를 추가하는 방식을 권장합니다.
 
+## 게임 바로가기
+
+**[ZZUGGURU 게임 플레이하기](https://zzugguru.github.io/zzugguru/)**
+
+`develop` 브랜치에 병합된 최신 버전이 GitHub Pages에 자동으로 배포됩니다.
+
 ## 2에이전트 하네스
 
 이 프로젝트에서 하네스는 메인 구현 에이전트와 읽기 전용 검증 에이전트가 기능을 순차적으로 개발·검증하는 Codex 운영 체계를 뜻합니다. 저장소 규칙은 `AGENTS.md`, 재사용 절차는 `.agents/skills/two-agent-harness/`에서 관리합니다.
 
 게임 테스트 데이터나 재현 시나리오는 실제로 필요한 기능의 `tests/` 안에 만듭니다. 실행 코드가 없는 최상위 `harness/` 폴더는 사용하지 않습니다.
 
-## 시작하기
+## 로컬에서 시작하기
 
 Node.js 20 이상을 권장합니다.
 
@@ -96,6 +102,10 @@ npm run preview     # 빌드 결과를 로컬에서 확인
 10. 병합 직후 `Deploy to GitHub Pages`가 검증·빌드·배포를 완료했는지 확인합니다.
 
 ## 로컬 확인과 자동 배포
+
+- 배포된 게임: [https://zzugguru.github.io/zzugguru/](https://zzugguru.github.io/zzugguru/)
+- 배포 브랜치: `develop`
+- 배포 워크플로: `.github/workflows/deploy-pages.yml`
 
 기능 브랜치에서는 로컬 개발 서버와 배포 빌드를 모두 확인할 수 있습니다.
 
