@@ -15,7 +15,7 @@ describe('Chapter03 research lab map', () => {
   });
 
   it('keeps the visible sprite inside both background borders', () => {
-    expect([PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG]).toEqual([1, 25]);
+    expect([PLAYER_SPRITE_SIDE_OVERHANG, PLAYER_SPRITE_TOP_OVERHANG]).toEqual([5, 42]);
     for (const map of [SPACESHIP_MAP, MEMORY_ROOM_MAP]) {
       const topmost = { x: map.bounds.x + 30, y: map.bounds.y + PLAYER_SPRITE_TOP_OVERHANG };
       expect(movePlayer(topmost, 0, -1, map)).toEqual(topmost);

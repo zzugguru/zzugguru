@@ -29,6 +29,7 @@ export const JOURNAL_LINES = [
   '그러므로 내일도 살아갈 것이다.',
 ] as const;
 export const ARCHIVE_DOOR = { x: 850, y: 240 } as const;
+export const QUARTERS_SPAWN: Point = { x: 480, y: 300 };
 
 export function createEpilogue(): EpilogueState {
   return { phase: 'locked', placed: [], step: 0, message: '' };
@@ -36,7 +37,7 @@ export function createEpilogue(): EpilogueState {
 
 export function startEpilogue(state: EpilogueState, lettingGo: LettingGoState): EpilogueState {
   return state.phase === 'locked' && lettingGo.completed
-    ? { ...state, phase: 'silence', message: '가족이 사라진 빈 연구실에 우주선의 소리만 남았다.' }
+    ? { ...state, phase: 'silence', message: '가족이 사라진 뒤, 영수의 작은 방에는 우주선의 소리만 남았다.' }
     : state;
 }
 
@@ -68,10 +69,18 @@ export function enterArchive(state: EpilogueState, position: Point): EpilogueSta
     : state;
 }
 
-export function moveEpiloguePlayer(position: Point, dx: number, dy: number): Point {
+export function moveEpiloguePlayer(
+  position: Point,
+  dx: number,
+  dy: number,
+  phase: 'corridor' | 'archive' = 'archive',
+): Point {
+  const bounds = phase === 'corridor'
+    ? { minX: 155, maxX: 786, minY: 132, maxY: 463 }
+    : { minX: 53, maxX: 881, minY: 132, maxY: 463 };
   return {
-    x: Math.max(49, Math.min(885, position.x + dx)),
-    y: Math.max(115, Math.min(463, position.y + dy)),
+    x: Math.max(bounds.minX, Math.min(bounds.maxX, position.x + dx)),
+    y: Math.max(bounds.minY, Math.min(bounds.maxY, position.y + dy)),
   };
 }
 

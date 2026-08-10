@@ -7,9 +7,3 @@ coverage/
 .env.local
 
 # Local Codex workflow files
-/BRIEF.md
-/.agents/
-
-# Local token measurement package and generated records
-/Token_usage/
-/output/
